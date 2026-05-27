@@ -1,0 +1,825 @@
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon,
+  Volume2, Bookmark, BookmarkCheck, Check, Search, X,
+  Sun, Moon, BarChart3, Flame, Share2, Grid3x3, Eye, EyeOff,
+  RotateCcw, Sparkles
+} from "lucide-react";
+import wordData from "./data/words.json";
+
+
+// Russian weekday & month names
+const RU_WEEKDAYS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+const RU_MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// ============================================================
+// LocalStorage helpers (with safe fallback for SSR / artifacts)
+// ============================================================
+const storage = {
+  get: (key, fallback) => {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return fallback;
+      const v = window.localStorage.getItem(key);
+      return v ? JSON.parse(v) : fallback;
+    } catch { return fallback; }
+  },
+  set: (key, value) => {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return;
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  }
+};
+
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
+export default function RussianCalendar() {
+  const initialIndex = useMemo(() => {
+    const t = todayISO();
+    const i = wordData.findIndex((w) => w.date === t);
+    return i >= 0 ? i : 0;
+  }, []);
+
+  const [index, setIndex] = useState(initialIndex);
+  const [flipping, setFlipping] = useState(false);
+  const [direction, setDirection] = useState("next");
+  const [theme, setTheme] = useState(() => storage.get("rc_theme", "light"));
+  const [learned, setLearned] = useState(() => new Set(storage.get("rc_learned", [])));
+  const [bookmarked, setBookmarked] = useState(() => new Set(storage.get("rc_bookmarked", [])));
+  const [visited, setVisited] = useState(() => new Set(storage.get("rc_visited", [])));
+  const [showAnswer, setShowAnswer] = useState(true);
+  const [view, setView] = useState("calendar"); // calendar | index | stats
+  const [searchQuery, setSearchQuery] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
+
+  const entry = wordData[index];
+  const isLearned = learned.has(entry.id);
+  const isBookmarked = bookmarked.has(entry.id);
+
+  // Track visits for streak
+  useEffect(() => {
+    const today = todayISO();
+    const v = new Set(visited);
+    if (!v.has(today)) {
+      v.add(today);
+      setVisited(v);
+      storage.set("rc_visited", Array.from(v));
+    }
+  }, []); // eslint-disable-line
+
+  // Reset answer visibility on word change
+  useEffect(() => { setShowAnswer(true); }, [index]);
+
+  // Persist theme
+  useEffect(() => { storage.set("rc_theme", theme); }, [theme]);
+
+  // Calculate streak
+  const streak = useMemo(() => {
+    const dates = Array.from(visited).sort().reverse();
+    if (dates.length === 0) return 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let s = 0;
+    let cursor = new Date(today);
+    for (const d of dates) {
+      const dt = new Date(d + "T00:00:00");
+      const diff = Math.floor((cursor - dt) / 86400000);
+      if (diff === 0) { s++; cursor.setDate(cursor.getDate() - 1); }
+      else if (diff === 1 && s > 0) { s++; cursor.setDate(cursor.getDate() - 1); }
+      else break;
+    }
+    // Reconsider from today properly
+    const seen = new Set(visited);
+    s = 0;
+    const c = new Date(today);
+    while (seen.has(`${c.getFullYear()}-${String(c.getMonth() + 1).padStart(2, "0")}-${String(c.getDate()).padStart(2, "0")}`)) {
+      s++;
+      c.setDate(c.getDate() - 1);
+    }
+    return s;
+  }, [visited]);
+
+  const flipTo = useCallback((newIndex, dir) => {
+    if (newIndex < 0 || newIndex >= wordData.length || flipping) return;
+    setDirection(dir);
+    setFlipping(true);
+    setTimeout(() => {
+      setIndex(newIndex);
+      setFlipping(false);
+    }, 260);
+  }, [flipping]);
+
+  const goPrev = useCallback(() => flipTo(index - 1, "prev"), [index, flipTo]);
+  const goNext = useCallback(() => flipTo(index + 1, "next"), [index, flipTo]);
+  const goToday = useCallback(() => {
+    const t = todayISO();
+    const i = wordData.findIndex((w) => w.date === t);
+    if (i >= 0 && i !== index) flipTo(i, i > index ? "next" : "prev");
+    else if (i < 0) flipTo(0, "prev");
+  }, [index, flipTo]);
+
+  const toggleLearned = () => {
+    const s = new Set(learned);
+    if (s.has(entry.id)) s.delete(entry.id); else s.add(entry.id);
+    setLearned(s);
+    storage.set("rc_learned", Array.from(s));
+  };
+
+  const toggleBookmark = () => {
+    const s = new Set(bookmarked);
+    if (s.has(entry.id)) s.delete(entry.id); else s.add(entry.id);
+    setBookmarked(s);
+    storage.set("rc_bookmarked", Array.from(s));
+  };
+
+  const speak = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(entry.word);
+    u.lang = "ru-RU";
+    u.rate = 0.85;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  };
+
+  const speakSentence = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(entry.sentence_ru);
+    u.lang = "ru-RU";
+    u.rate = 0.8;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target.tagName === "INPUT") return;
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "t" || e.key === "T") goToday();
+      if (e.key === " ") { e.preventDefault(); setShowAnswer(s => !s); }
+      if (e.key === "l" || e.key === "L") toggleLearned();
+      if (e.key === "b" || e.key === "B") toggleBookmark();
+      if (e.key === "Escape") { setView("calendar"); setShareOpen(false); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  // Date parsing
+  const dateObj = new Date(entry.date + "T00:00:00");
+  const day = dateObj.getDate();
+  const monthEn = dateObj.toLocaleDateString("en-US", { month: "long" });
+  const yearEn = dateObj.getFullYear();
+  const weekdayEn = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+  const weekdayRu = RU_WEEKDAYS[dateObj.getDay()];
+  const monthRu = RU_MONTHS[dateObj.getMonth()];
+  const dayOfYear = Math.floor((dateObj - new Date(yearEn, 0, 0)) / (1000 * 60 * 60 * 24));
+
+  const isDark = theme === "dark";
+
+  // Theme palette
+  const palette = isDark ? {
+    bgGradient: "radial-gradient(ellipse at top, #1a1410 0%, #0d0907 60%, #050302 100%)",
+    paperBg: "#1a1612",
+    paperBgImage: "radial-gradient(ellipse at 20% 30%, rgba(180, 140, 90, 0.06) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(140, 100, 60, 0.05) 0%, transparent 55%)",
+    boardBg: "linear-gradient(135deg, #2a1f15 0%, #0f0a06 100%)",
+    inkColor: "#e8dcc4",
+    inkMuted: "rgba(232,220,196,0.6)",
+    inkFaint: "rgba(232,220,196,0.35)",
+    accentRed: "#c97070",
+    accentRedDeep: "#8b1a1a",
+    cardBorder: "rgba(232,220,196,0.1)",
+    sentenceBg: "rgba(255,250,235,0.03)",
+    holeColor: "#050302",
+    holeRing: "#1a1410",
+  } : {
+    bgGradient: "radial-gradient(ellipse at top, #2d1810 0%, #1a0e08 60%, #0f0805 100%)",
+    paperBg: "#f4ead5",
+    paperBgImage: "radial-gradient(ellipse at 20% 30%, rgba(180, 140, 90, 0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(140, 100, 60, 0.10) 0%, transparent 55%), radial-gradient(circle at 50% 50%, transparent 0%, rgba(120, 80, 40, 0.06) 100%)",
+    boardBg: "linear-gradient(135deg, #5c3a1f 0%, #3d2614 100%)",
+    inkColor: "#1a0e08",
+    inkMuted: "rgba(26,14,8,0.6)",
+    inkFaint: "rgba(26,14,8,0.35)",
+    accentRed: "#8b1a1a",
+    accentRedDeep: "#7a1818",
+    cardBorder: "rgba(26,14,8,0.15)",
+    sentenceBg: "rgba(255,250,235,0.4)",
+    holeColor: "#1a0e08",
+    holeRing: "#2d1810",
+  };
+
+  // ============================================================
+  // INDEX VIEW (search & jump to any word)
+  // ============================================================
+  if (view === "index") {
+    const filtered = wordData.filter(w => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return w.word.toLowerCase().includes(q) ||
+             w.meaning.toLowerCase().includes(q) ||
+             w.pronunciation.toLowerCase().includes(q) ||
+             w.category.toLowerCase().includes(q);
+    });
+    return (
+      <div className="min-h-screen w-full p-4 sm:p-8" style={{ background: palette.bgGradient }}>
+        <FontStyles />
+        <div className="max-w-3xl mx-auto">
+          <Header view={view} setView={setView} theme={theme} setTheme={setTheme} streak={streak} learnedCount={learned.size} />
+          <div className="mt-6 mb-4 relative">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" strokeWidth={1.5} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              autoFocus
+              placeholder="Search words, meanings, categories..."
+              className="w-full pl-11 pr-4 py-3 rounded-sm border serif-body text-sm focus:outline-none transition-all"
+              style={{
+                background: isDark ? "rgba(244,234,213,0.05)" : "rgba(255,250,235,0.95)",
+                borderColor: palette.cardBorder,
+                color: palette.inkColor,
+              }}
+            />
+          </div>
+          <div className="serif-body text-[11px] tracking-[0.25em] uppercase mb-3" style={{ color: palette.inkMuted }}>
+            {filtered.length} {filtered.length === 1 ? "word" : "words"}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {filtered.map(w => {
+              const wIdx = wordData.indexOf(w);
+              const isL = learned.has(w.id);
+              const isB = bookmarked.has(w.id);
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => { setIndex(wIdx); setView("calendar"); }}
+                  className="text-left p-4 rounded-sm border hover:scale-[1.01] transition-all group"
+                  style={{
+                    background: isDark ? "rgba(244,234,213,0.04)" : "rgba(255,250,235,0.85)",
+                    borderColor: palette.cardBorder,
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="serif-body text-[9px] tracking-[0.2em] uppercase" style={{ color: palette.inkFaint }}>
+                          {new Date(w.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </span>
+                        <span className="serif-body text-[9px] tracking-[0.2em] uppercase px-1.5 py-0.5 rounded-sm" style={{
+                          background: palette.accentRed + "22",
+                          color: palette.accentRed,
+                        }}>{w.category}</span>
+                      </div>
+                      <div className="cyrillic-display text-2xl mb-0.5 truncate" style={{ color: palette.inkColor }}>
+                        {w.word}
+                      </div>
+                      <div className="serif-display italic text-sm truncate" style={{ color: palette.inkMuted }}>
+                        {w.meaning}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end shrink-0">
+                      {isL && <Check size={14} style={{ color: palette.accentRed }} strokeWidth={2} />}
+                      {isB && <BookmarkCheck size={14} style={{ color: palette.accentRed }} strokeWidth={1.8} />}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // STATS VIEW
+  // ============================================================
+  if (view === "stats") {
+    const byCategory = {};
+    wordData.forEach(w => {
+      if (!byCategory[w.category]) byCategory[w.category] = { total: 0, learned: 0 };
+      byCategory[w.category].total++;
+      if (learned.has(w.id)) byCategory[w.category].learned++;
+    });
+    const catEntries = Object.entries(byCategory).sort((a, b) => b[1].total - a[1].total);
+    const learnedPct = Math.round((learned.size / wordData.length) * 100);
+
+    return (
+      <div className="min-h-screen w-full p-4 sm:p-8" style={{ background: palette.bgGradient }}>
+        <FontStyles />
+        <div className="max-w-2xl mx-auto">
+          <Header view={view} setView={setView} theme={theme} setTheme={setTheme} streak={streak} learnedCount={learned.size} />
+
+          <div className="mt-8 grid grid-cols-3 gap-3 mb-6">
+            <StatCard label="Streak" value={streak} suffix="days" icon={Flame} palette={palette} />
+            <StatCard label="Learned" value={learned.size} suffix={`of ${wordData.length}`} icon={Check} palette={palette} />
+            <StatCard label="Saved" value={bookmarked.size} suffix="words" icon={Bookmark} palette={palette} />
+          </div>
+
+          <div className="rounded-sm border p-6 mb-6" style={{
+            background: isDark ? "rgba(244,234,213,0.04)" : "rgba(255,250,235,0.85)",
+            borderColor: palette.cardBorder,
+          }}>
+            <div className="flex items-end justify-between mb-3">
+              <div className="serif-body text-[11px] tracking-[0.25em] uppercase" style={{ color: palette.inkMuted }}>
+                Overall Progress
+              </div>
+              <div className="cyrillic-display text-3xl" style={{ color: palette.accentRed }}>{learnedPct}%</div>
+            </div>
+            <div className="h-2 rounded-full overflow-hidden" style={{ background: palette.cardBorder }}>
+              <div className="h-full transition-all duration-700" style={{
+                width: `${learnedPct}%`,
+                background: `linear-gradient(90deg, ${palette.accentRedDeep}, ${palette.accentRed})`,
+              }} />
+            </div>
+          </div>
+
+          <div className="rounded-sm border p-6" style={{
+            background: isDark ? "rgba(244,234,213,0.04)" : "rgba(255,250,235,0.85)",
+            borderColor: palette.cardBorder,
+          }}>
+            <div className="serif-body text-[11px] tracking-[0.25em] uppercase mb-4" style={{ color: palette.inkMuted }}>
+              By Category
+            </div>
+            <div className="space-y-3">
+              {catEntries.map(([cat, { total, learned: l }]) => {
+                const pct = Math.round((l / total) * 100);
+                return (
+                  <div key={cat}>
+                    <div className="flex justify-between items-baseline mb-1">
+                      <span className="serif-display text-sm" style={{ color: palette.inkColor }}>{cat}</span>
+                      <span className="serif-body text-[10px] tracking-[0.15em]" style={{ color: palette.inkMuted }}>
+                        {l}/{total}
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: palette.cardBorder }}>
+                      <div className="h-full transition-all duration-500" style={{
+                        width: `${pct}%`,
+                        background: palette.accentRed,
+                      }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {(learned.size > 0 || bookmarked.size > 0) && (
+            <button
+              onClick={() => {
+                if (confirm("Reset all progress? This cannot be undone.")) {
+                  setLearned(new Set()); setBookmarked(new Set());
+                  storage.set("rc_learned", []); storage.set("rc_bookmarked", []);
+                }
+              }}
+              className="mt-6 flex items-center gap-2 mx-auto px-4 py-2 rounded-sm border serif-body text-[11px] tracking-[0.2em] uppercase transition-all hover:opacity-100 opacity-60"
+              style={{ borderColor: palette.cardBorder, color: palette.inkMuted }}
+            >
+              <RotateCcw size={12} strokeWidth={1.5} /> Reset Progress
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // MAIN CALENDAR VIEW
+  // ============================================================
+  return (
+    <div className="min-h-screen w-full flex flex-col items-center p-4 sm:p-8" style={{ background: palette.bgGradient }}>
+      <FontStyles />
+      <div className="w-full max-w-2xl">
+        <Header view={view} setView={setView} theme={theme} setTheme={setTheme} streak={streak} learnedCount={learned.size} />
+
+        {/* Calendar mount / hanger */}
+        <div className="flex justify-center mt-6 mb-2">
+          <div className="w-24 h-3 rounded-b-lg" style={{
+            background: isDark ? "linear-gradient(to bottom, #3d2614, #1a1008)" : "linear-gradient(to bottom, #6b4423, #3d2614)",
+          }}></div>
+        </div>
+
+        {/* Page with backing board */}
+        <div className="relative">
+          <div className="absolute inset-0 rounded-sm" style={{
+            background: palette.boardBg,
+            transform: "translate(8px, 8px)",
+            boxShadow: "inset 0 0 60px rgba(0,0,0,0.4)",
+          }}></div>
+
+          <div
+            key={index}
+            className={`relative rounded-sm overflow-hidden ${
+              flipping
+                ? direction === "next" ? "flip-out-next" : "flip-out-prev"
+                : direction === "next" ? "flip-in-next" : "flip-in-prev"
+            }`}
+            style={{
+              backgroundColor: palette.paperBg,
+              backgroundImage: palette.paperBgImage,
+              filter: "drop-shadow(0 25px 50px rgba(0,0,0,0.5)) drop-shadow(0 10px 20px rgba(0,0,0,0.3))",
+              perspective: "1200px",
+            }}
+          >
+            {/* Grain texture */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0 0.1 0 0 0 ${isDark ? "0.4" : "0.25"} 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              opacity: isDark ? 0.25 : 0.4,
+              mixBlendMode: isDark ? "screen" : "multiply",
+            }}></div>
+
+            {/* Hole punches */}
+            <div className="absolute top-3 left-1/2 -translate-x-16 w-3 h-3 rounded-full" style={{
+              background: `radial-gradient(circle, ${palette.holeColor} 0%, ${palette.holeColor} 60%, ${palette.holeRing} 65%, transparent 70%)`,
+            }}></div>
+            <div className="absolute top-3 left-1/2 translate-x-14 w-3 h-3 rounded-full" style={{
+              background: `radial-gradient(circle, ${palette.holeColor} 0%, ${palette.holeColor} 60%, ${palette.holeRing} 65%, transparent 70%)`,
+            }}></div>
+
+            {/* Action buttons (corner) */}
+            <div className="absolute top-4 right-4 flex gap-1.5 z-10">
+              <button
+                onClick={toggleBookmark}
+                aria-label={isBookmarked ? "Remove bookmark" : "Bookmark"}
+                className="p-1.5 rounded-full transition-all hover:scale-110"
+                style={{ background: isBookmarked ? palette.accentRed + "22" : "transparent" }}
+              >
+                {isBookmarked ?
+                  <BookmarkCheck size={14} style={{ color: palette.accentRed }} strokeWidth={1.8} /> :
+                  <Bookmark size={14} style={{ color: palette.inkMuted }} strokeWidth={1.5} />
+                }
+              </button>
+            </div>
+            <div className="absolute top-4 left-4 flex gap-1.5 z-10">
+              <span className="serif-body text-[9px] tracking-[0.25em] uppercase" style={{
+                color: palette.accentRed,
+              }}>
+                {entry.cefr_level}
+              </span>
+            </div>
+
+            {/* Header */}
+            <div className="relative pt-10 pb-5 px-8 text-center border-b" style={{ borderColor: palette.cardBorder }}>
+              <div className="flex items-center justify-center gap-3 mb-1">
+                <div className="h-px w-12" style={{ background: palette.inkFaint }}></div>
+                <span className="serif-display text-[10px] tracking-[0.35em] uppercase" style={{ color: palette.inkMuted }}>
+                  Календарь · MMXXVI
+                </span>
+                <div className="h-px w-12" style={{ background: palette.inkFaint }}></div>
+              </div>
+              <div className="serif-display italic text-sm" style={{ color: palette.inkMuted }}>
+                A Word a Day · Daily Russian
+              </div>
+            </div>
+
+            {/* Perforation */}
+            <div className="absolute left-0 right-0 pointer-events-none h-1" style={{
+              top: "98px",
+              backgroundImage: `radial-gradient(circle, ${palette.holeColor} 1px, transparent 1.5px)`,
+              backgroundSize: "8px 4px",
+              backgroundRepeat: "repeat-x",
+              backgroundPosition: "center",
+              opacity: 0.5,
+            }}></div>
+
+            {/* Date band */}
+            <div className="px-8 pt-6 pb-2 flex items-end justify-between">
+              <div className="text-left">
+                <div className="serif-body text-[10px] uppercase tracking-[0.25em]" style={{ color: palette.inkMuted }}>
+                  {weekdayEn}
+                </div>
+                <div className="serif-display italic text-sm mt-0.5" style={{ color: palette.inkFaint }}>
+                  {weekdayRu}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="cyrillic-display leading-none" style={{
+                  fontSize: "5rem", fontWeight: 700, color: palette.accentRed,
+                }}>
+                  {day}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="serif-body text-[10px] uppercase tracking-[0.25em]" style={{ color: palette.inkMuted }}>
+                  {monthEn} {yearEn}
+                </div>
+                <div className="serif-display italic text-sm mt-0.5" style={{ color: palette.inkFaint }}>
+                  {monthRu}
+                </div>
+              </div>
+            </div>
+
+            {/* Day counter + category */}
+            <div className="px-8 pb-6 flex items-center justify-center gap-3">
+              <div className="h-px w-8" style={{ background: palette.inkFaint }}></div>
+              <span className="serif-body text-[10px] tracking-[0.3em] uppercase" style={{ color: palette.inkMuted }}>
+                Day {dayOfYear} of 365
+              </span>
+              <span style={{ color: palette.inkFaint }}>·</span>
+              <span className="serif-body text-[10px] tracking-[0.3em] uppercase" style={{ color: palette.accentRed }}>
+                {entry.category}
+              </span>
+              <div className="h-px w-8" style={{ background: palette.inkFaint }}></div>
+            </div>
+
+            {/* Word section */}
+            <div className="px-6 sm:px-10 py-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="h-px w-6" style={{ background: palette.accentRed, opacity: 0.5 }}></div>
+                <span className="serif-body text-[10px] uppercase tracking-[0.4em]" style={{ color: palette.accentRed }}>
+                  Слово дня
+                </span>
+                <div className="h-px w-6" style={{ background: palette.accentRed, opacity: 0.5 }}></div>
+              </div>
+
+              <h1 className="cyrillic-display leading-[0.95] mb-6 break-words" style={{
+                fontSize: "clamp(3.5rem, 10vw, 6rem)",
+                color: palette.inkColor,
+              }}>
+                {entry.word}
+              </h1>
+
+              {/* Pronunciation */}
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <button onClick={speak}
+                  className="group p-1.5 rounded-full border transition-all hover:scale-110"
+                  style={{ borderColor: palette.cardBorder }}
+                  aria-label="Pronounce word">
+                  <Volume2 size={14} style={{ color: palette.inkMuted }} strokeWidth={1.5} />
+                </button>
+                <span className="serif-display italic text-xl" style={{ color: palette.inkColor, opacity: 0.85 }}>
+                  /{entry.pronunciation.toLowerCase()}/
+                </span>
+              </div>
+
+              {/* IPA */}
+              {entry.ipa && (
+                <div className="serif-body text-[11px] mb-5 tracking-wide" style={{ color: palette.inkFaint }}>
+                  IPA {entry.ipa}
+                </div>
+              )}
+
+              {/* Meaning with hide/reveal */}
+              <div className="flex items-center justify-center gap-2 mb-2">
+                {showAnswer ? (
+                  <div className="inline-block px-5 py-1.5 border-y-2" style={{ borderColor: palette.inkColor, opacity: 0.85 }}>
+                    <span className="serif-body text-sm tracking-wide" style={{ color: palette.inkColor }}>
+                      {entry.meaning}
+                    </span>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAnswer(true)}
+                    className="px-5 py-1.5 border-y-2 border-dashed serif-body text-sm tracking-wide italic opacity-50 hover:opacity-100 transition-opacity"
+                    style={{ borderColor: palette.inkMuted, color: palette.inkMuted }}>
+                    Tap to reveal meaning
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center gap-2 mt-1">
+                <span className="serif-body text-[10px] tracking-wider italic" style={{ color: palette.inkFaint }}>
+                  {entry.part_of_speech}
+                </span>
+                <button
+                  onClick={() => setShowAnswer(s => !s)}
+                  className="opacity-40 hover:opacity-80 transition-opacity"
+                  aria-label="Toggle answer">
+                  {showAnswer ? <EyeOff size={11} style={{ color: palette.inkMuted }} /> : <Eye size={11} style={{ color: palette.inkMuted }} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Sentence box */}
+            <div className="mx-6 sm:mx-10 mb-6 relative">
+              <div className="border px-6 py-5" style={{
+                background: palette.sentenceBg,
+                borderColor: palette.cardBorder,
+                boxShadow: isDark ? "inset 0 0 30px rgba(0,0,0,0.2)" : "inset 0 0 30px rgba(120,80,40,0.05)",
+              }}>
+                {/* Corner ornaments */}
+                {["top-left", "top-right", "bottom-left", "bottom-right"].map(p => {
+                  const styles = {
+                    "top-left": { top: -6, left: -6, borderLeftWidth: 1, borderTopWidth: 1 },
+                    "top-right": { top: -6, right: -6, borderRightWidth: 1, borderTopWidth: 1 },
+                    "bottom-left": { bottom: -6, left: -6, borderLeftWidth: 1, borderBottomWidth: 1 },
+                    "bottom-right": { bottom: -6, right: -6, borderRightWidth: 1, borderBottomWidth: 1 },
+                  };
+                  return <div key={p} className="absolute w-3 h-3" style={{
+                    ...styles[p],
+                    borderStyle: "solid",
+                    borderColor: palette.inkMuted,
+                  }}></div>;
+                })}
+
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="serif-body text-[9px] uppercase tracking-[0.3em]" style={{ color: palette.accentRed }}>
+                    Пример · Example
+                  </span>
+                  <button onClick={speakSentence}
+                    className="opacity-60 hover:opacity-100 transition-opacity"
+                    aria-label="Play sentence">
+                    <Volume2 size={10} style={{ color: palette.accentRed }} strokeWidth={1.8} />
+                  </button>
+                </div>
+                <p className="cyrillic-display text-2xl text-center leading-snug mb-2" style={{ color: palette.inkColor }}>
+                  «{entry.sentence_ru}»
+                </p>
+                <p className="serif-display italic text-center text-base" style={{ color: palette.inkMuted }}>
+                  {entry.sentence_en}
+                </p>
+              </div>
+            </div>
+
+            {/* Notes (если есть) */}
+            {entry.notes && (
+              <div className="mx-6 sm:mx-10 mb-6">
+                <div className="flex items-start gap-2 px-2">
+                  <Sparkles size={11} className="mt-0.5 shrink-0" style={{ color: palette.accentRed }} strokeWidth={1.5} />
+                  <p className="serif-display italic text-xs leading-relaxed" style={{ color: palette.inkMuted }}>
+                    {entry.notes}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="px-8 pb-6 pt-2 flex items-center justify-between border-t" style={{ borderColor: palette.cardBorder }}>
+              <span className="serif-body text-[9px] tracking-[0.25em] uppercase" style={{ color: palette.inkMuted }}>
+                No. {String(entry.id).padStart(3, "0")}
+              </span>
+              <span className="serif-display italic text-[11px]" style={{ color: palette.inkFaint }}>
+                tear away · learn · repeat
+              </span>
+              <span className="serif-body text-[9px] tracking-[0.25em] uppercase" style={{ color: palette.inkMuted }}>
+                MMXXVI
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Mark as learned button */}
+        <div className="mt-5 flex justify-center">
+          <button
+            onClick={toggleLearned}
+            className="group flex items-center gap-2 px-4 py-2 rounded-full transition-all"
+            style={{
+              background: isLearned ? palette.accentRed : "transparent",
+              border: `1px solid ${isLearned ? palette.accentRed : palette.cardBorder}`,
+              color: isLearned ? (isDark ? "#1a1410" : "#f4ead5") : palette.inkMuted,
+            }}
+          >
+            {isLearned ? <Check size={13} strokeWidth={2.2} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: palette.inkMuted }}></div>}
+            <span className="serif-body text-[10px] tracking-[0.25em] uppercase">
+              {isLearned ? "Learned" : "Mark as learned"}
+            </span>
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <button onClick={goPrev} disabled={index === 0 || flipping}
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-sm border disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            style={{ borderColor: palette.cardBorder, color: palette.inkMuted }}>
+            <ChevronLeft size={16} strokeWidth={1.5} />
+            <span className="serif-body text-[11px] tracking-[0.25em] uppercase hidden sm:inline">Previous</span>
+          </button>
+
+          <button onClick={goToday}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-sm transition-all hover:scale-105"
+            style={{
+              background: `linear-gradient(180deg, ${palette.accentRed} 0%, ${palette.accentRedDeep} 100%)`,
+              boxShadow: `0 4px 12px ${palette.accentRedDeep}66, inset 0 1px 0 rgba(255,255,255,0.15)`,
+              color: "#f4ead5",
+            }}>
+            <CalendarIcon size={14} strokeWidth={1.5} />
+            <span className="serif-body text-[11px] tracking-[0.25em] uppercase">Today</span>
+          </button>
+
+          <button onClick={goNext} disabled={index === wordData.length - 1 || flipping}
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-sm border disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            style={{ borderColor: palette.cardBorder, color: palette.inkMuted }}>
+            <span className="serif-body text-[11px] tracking-[0.25em] uppercase hidden sm:inline">Next</span>
+            <ChevronRight size={16} strokeWidth={1.5} />
+          </button>
+        </div>
+
+        {/* Keyboard hints */}
+        <p className="text-center mt-4 serif-display italic text-[10px]" style={{ color: palette.inkFaint }}>
+          ← → flip · space hide/show · L learned · B bookmark · T today
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Sub-components
+// ============================================================
+function Header({ view, setView, theme, setTheme, streak, learnedCount }) {
+  const isDark = theme === "dark";
+  const btnStyle = {
+    color: isDark ? "rgba(232,220,196,0.7)" : "rgba(244,234,213,0.7)",
+    borderColor: isDark ? "rgba(232,220,196,0.15)" : "rgba(244,234,213,0.2)",
+  };
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <button onClick={() => setView("calendar")}
+          className={`p-2 rounded-sm border transition-all ${view === "calendar" ? "opacity-100" : "opacity-50 hover:opacity-100"}`}
+          style={btnStyle} aria-label="Calendar view">
+          <CalendarIcon size={14} strokeWidth={1.5} />
+        </button>
+        <button onClick={() => setView("index")}
+          className={`p-2 rounded-sm border transition-all ${view === "index" ? "opacity-100" : "opacity-50 hover:opacity-100"}`}
+          style={btnStyle} aria-label="Index view">
+          <Grid3x3 size={14} strokeWidth={1.5} />
+        </button>
+        <button onClick={() => setView("stats")}
+          className={`p-2 rounded-sm border transition-all ${view === "stats" ? "opacity-100" : "opacity-50 hover:opacity-100"}`}
+          style={btnStyle} aria-label="Stats view">
+          <BarChart3 size={14} strokeWidth={1.5} />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {streak > 0 && (
+          <div className="flex items-center gap-1.5 serif-body text-[10px] tracking-[0.2em] uppercase" style={btnStyle}>
+            <Flame size={12} strokeWidth={1.8} style={{ color: "#c97070" }} />
+            <span>{streak}d streak</span>
+          </div>
+        )}
+        <div className="serif-body text-[10px] tracking-[0.2em] uppercase opacity-60" style={btnStyle}>
+          {learnedCount} learned
+        </div>
+        <button onClick={() => setTheme(t => t === "light" ? "dark" : "light")}
+          className="p-2 rounded-sm border transition-all hover:opacity-100 opacity-70" style={btnStyle}
+          aria-label="Toggle theme">
+          {isDark ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, suffix, icon: Icon, palette }) {
+  return (
+    <div className="rounded-sm border p-4 text-center" style={{
+      background: palette.sentenceBg, borderColor: palette.cardBorder,
+    }}>
+      <Icon size={14} className="mx-auto mb-2" style={{ color: palette.accentRed }} strokeWidth={1.5} />
+      <div className="cyrillic-display text-3xl mb-0.5" style={{ color: palette.inkColor }}>{value}</div>
+      <div className="serif-body text-[9px] tracking-[0.25em] uppercase" style={{ color: palette.inkMuted }}>
+        {label} {suffix && <span className="opacity-60">{suffix}</span>}
+      </div>
+    </div>
+  );
+}
+
+function FontStyles() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap');
+
+      .cyrillic-display { font-family: 'Old Standard TT', 'Cormorant Garamond', serif; font-feature-settings: "liga", "dlig"; letter-spacing: -0.02em; }
+      .serif-body { font-family: 'PT Serif', Georgia, serif; }
+      .serif-display { font-family: 'Cormorant Garamond', Georgia, serif; }
+
+      @keyframes tearOut {
+        0% { transform: rotateX(0deg) translateY(0); opacity: 1; }
+        100% { transform: rotateX(-95deg) translateY(-20px); opacity: 0; }
+      }
+      @keyframes tearIn {
+        0% { transform: rotateX(95deg) translateY(20px); opacity: 0; }
+        100% { transform: rotateX(0deg) translateY(0); opacity: 1; }
+      }
+      @keyframes tearOutBack {
+        0% { transform: rotateX(0deg) translateY(0); opacity: 1; }
+        100% { transform: rotateX(95deg) translateY(20px); opacity: 0; }
+      }
+      @keyframes tearInBack {
+        0% { transform: rotateX(-95deg) translateY(-20px); opacity: 0; }
+        100% { transform: rotateX(0deg) translateY(0); opacity: 1; }
+      }
+      .flip-out-next { animation: tearOut 0.26s ease-in forwards; transform-origin: top center; }
+      .flip-in-next { animation: tearIn 0.30s ease-out forwards; transform-origin: top center; }
+      .flip-out-prev { animation: tearOutBack 0.26s ease-in forwards; transform-origin: bottom center; }
+      .flip-in-prev { animation: tearInBack 0.30s ease-out forwards; transform-origin: bottom center; }
+
+      button:focus-visible {
+        outline: 2px solid #c97070;
+        outline-offset: 2px;
+      }
+      input:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px #c9707055;
+      }
+    `}</style>
+  );
+}
