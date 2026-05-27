@@ -18,7 +18,7 @@
         "sentence_en": "Hi, how are you?",
         "notes": "Use with friends, family, peers. Never with strangers or elders.",
         "image_prompt": "two cheerful friends waving hello to each other in a sunny park",
-        "image": null
+        "image": "/images/1.png"
       }
     ]
   },
@@ -41,7 +41,7 @@
         "sentence_en": "Hello, my name is Ivan.",
         "notes": "Formal greeting. The first 'в' is silent.",
         "image_prompt": "a person bowing politely in a formal handshake at an office entrance",
-        "image": null
+        "image": "/images/2.png"
       },
       {
         "id": 3,
@@ -54,7 +54,7 @@
         "sentence_en": "Goodbye, see you tomorrow!",
         "notes": "Literally 'until [we] see [each other]'. Use formally.",
         "image_prompt": "two business colleagues waving goodbye at a train station",
-        "image": null
+        "image": "/images/3.png"
       }
     ]
   },
@@ -77,7 +77,7 @@
         "sentence_en": "Yes, of course!",
         "notes": "The most basic affirmative.",
         "image_prompt": "a smiling person giving a thumbs up with a checkmark beside them",
-        "image": null
+        "image": "/images/4.png"
       },
       {
         "id": 5,
@@ -90,7 +90,7 @@
         "sentence_en": "No, thank you.",
         "notes": "Polite refusal. Stress on the only syllable.",
         "image_prompt": "a person gently shaking their head with a soft 'no' gesture",
-        "image": null
+        "image": "/images/5.png"
       }
     ]
   },
@@ -113,7 +113,7 @@
         "sentence_en": "Thank you very much!",
         "notes": "From 'спаси Бог' (God save). Stress on the second syllable.",
         "image_prompt": "two hands gently passing a small gift wrapped in ribbon",
-        "image": null
+        "image": "/images/6.png"
       },
       {
         "id": 7,
@@ -126,7 +126,7 @@
         "sentence_en": "Coffee, please.",
         "notes": "Multi-purpose: 'please' AND response to 'thank you'.",
         "image_prompt": "a waiter politely offering a cup of tea on a tray",
-        "image": null
+        "image": "/images/7.png"
       }
     ]
   },
@@ -149,7 +149,7 @@
         "sentence_en": "Excuse me, where is the metro?",
         "notes": "Use to get attention or apologize politely.",
         "image_prompt": "a polite person tapping someone's shoulder to ask for directions",
-        "image": null
+        "image": "/images/8.png"
       },
       {
         "id": 9,
@@ -162,7 +162,7 @@
         "sentence_en": "Sorry, I'm late.",
         "notes": "Casual apology — to a friend, not a stranger.",
         "image_prompt": "a child holding flowers with an apologetic smile",
-        "image": null
+        "image": "/images/9.png"
       }
     ]
   },
@@ -185,7 +185,7 @@
         "sentence_en": "Hi! How are you?",
         "notes": "Literally 'how affairs?'. Universal greeting.",
         "image_prompt": "two friends meeting on a bridge, one warmly asking how the other is doing",
-        "image": null
+        "image": "/images/10.png"
       },
       {
         "id": 11,

@@ -3,7 +3,10 @@
     "allow": [
       "PowerShell(npm run *)",
       "PowerShell(Get-NetTCPConnection *)",
-      "PowerShell(Get-CimInstance *)"
+      "PowerShell(Get-CimInstance *)",
+      "Bash(node -e ' *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Add images for days 1-10 *)"
     ]
   }
 }
