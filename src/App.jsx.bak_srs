@@ -63,89 +63,6 @@ const getStrength = (entry) => {
 };
 
 // ============================================================
-// QUIZ ENGINE — 日曜クイズ（4形式 + その週&過去ミックス）
-// ============================================================
-const QUIZ_TYPES = ['ru_to_meaning', 'meaning_to_ru', 'listening', 'cloze'];
-
-const quizShuffle = (arr) => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
-
-// ダミー選択肢を生成（正解と重複しない3つ）
-const makeDistractors = (correctValue, pool, field, count = 3) => {
-  const seen = new Set([correctValue]);
-  const result = [];
-  for (const w of quizShuffle(pool)) {
-    if (!seen.has(w[field])) { seen.add(w[field]); result.push(w[field]); }
-    if (result.length >= count) break;
-  }
-  return result;
-};
-
-// 穴埋め可能か（例文に単語がそのまま含まれるか）
-const canCloze = (word) => word.sentence_ru && word.sentence_ru.includes(word.word);
-const makeCloze = (word) => word.sentence_ru.replace(word.word, '____');
-
-// 1問を生成
-const makeQuestion = (word, pool, forcedType = null) => {
-  let type = forcedType || QUIZ_TYPES[Math.floor(Math.random() * QUIZ_TYPES.length)];
-  if (type === 'cloze' && !canCloze(word)) type = 'ru_to_meaning';
-
-  let question, options, answer, audio = null;
-  if (type === 'ru_to_meaning') {
-    question = word.word; answer = word.meaning;
-    options = quizShuffle([word.meaning, ...makeDistractors(word.meaning, pool, 'meaning')]);
-  } else if (type === 'meaning_to_ru') {
-    question = word.meaning; answer = word.word;
-    options = quizShuffle([word.word, ...makeDistractors(word.word, pool, 'word')]);
-  } else if (type === 'listening') {
-    question = '🔊'; audio = word.word; answer = word.meaning;
-    options = quizShuffle([word.meaning, ...makeDistractors(word.meaning, pool, 'meaning')]);
-  } else if (type === 'cloze') {
-    question = makeCloze(word); answer = word.word;
-    options = quizShuffle([word.word, ...makeDistractors(word.word, pool, 'word')]);
-  }
-  return { type, question, options, answer, audio, wordId: word.id, fullWord: word };
-};
-
-// 週のクイズを生成（その週+過去ミックス）
-const generateWeeklyQuiz = (allWords, todayISO, numQuestions = 10) => {
-  const weekAgo = new Date(todayISO);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekAgoISO = weekAgo.toISOString().split('T')[0];
-
-  const learned = allWords.filter(w => w.day_date <= todayISO);
-  if (learned.length === 0) return [];
-
-  const thisWeek = learned.filter(w => w.day_date > weekAgoISO);
-  const past = learned.filter(w => w.day_date <= weekAgoISO);
-
-  // 週の単語を優先（最大7問）、残りは過去から
-  let selected = quizShuffle(thisWeek).slice(0, Math.min(7, numQuestions));
-  const remaining = numQuestions - selected.length;
-  if (remaining > 0) {
-    selected = [...selected, ...quizShuffle(past).slice(0, remaining)];
-  }
-  // それでも足りなければ全体から補充
-  if (selected.length < numQuestions) {
-    const ids = new Set(selected.map(w => w.id));
-    const more = quizShuffle(learned).filter(w => !ids.has(w.id)).slice(0, numQuestions - selected.length);
-    selected = [...selected, ...more];
-  }
-
-  // 形式を均等に割り当て
-  return quizShuffle(selected).map((w, i) => makeQuestion(w, learned, QUIZ_TYPES[i % QUIZ_TYPES.length]));
-};
-
-// 日曜かどうか
-const isSunday = (isoDate) => new Date(isoDate).getDay() === 0;
-
-// ============================================================
 // CONSTANTS & HELPERS
 // ============================================================
 const STORAGE_KEYS = {
@@ -533,179 +450,6 @@ function ReviewSession({ dueWords, srsData, onClose, onSpeak, onAnswer, dark }) 
 }
 
 // ============================================================
-// COMPONENT: QuizSession — 日曜クイズ（4形式ミックス）
-// ============================================================
-function QuizSession({ allWords, onClose, onSpeak, onQuizComplete, dark }) {
-  const [questions] = useState(() => generateWeeklyQuiz(allWords, getTodayISO(), 10));
-  const [idx, setIdx] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [answered, setAnswered] = useState(false);
-  const [score, setScore] = useState(0);
-  const [finished, setFinished] = useState(false);
-  const [wrongWords, setWrongWords] = useState([]);
-
-  const current = questions[idx];
-
-  // 聞き取り問題は自動で音声再生
-  useEffect(() => {
-    if (current && current.type === 'listening' && current.audio) {
-      const t = setTimeout(() => onSpeak(current.audio), 400);
-      return () => clearTimeout(t);
-    }
-  }, [current, onSpeak]);
-
-  const handleSelect = (option) => {
-    if (answered) return;
-    setSelected(option);
-    setAnswered(true);
-    if (option === current.answer) {
-      setScore(s => s + 1);
-    } else {
-      setWrongWords(w => [...w, current.fullWord]);
-    }
-  };
-
-  const handleNext = () => {
-    if (idx + 1 < questions.length) {
-      setIdx(idx + 1);
-      setSelected(null);
-      setAnswered(false);
-    } else {
-      setFinished(true);
-      if (onQuizComplete) onQuizComplete(score, questions.length);
-    }
-  };
-
-  // 問題がない場合
-  if (questions.length === 0) {
-    return (
-      <div className={`view-overlay ${dark ? 'dark' : ''}`}>
-        <div className="view-header">
-          <h2><Target size={22} /> Sunday Quiz</h2>
-          <button className="close-btn" onClick={onClose}><X size={22} /></button>
-        </div>
-        <div className="empty-state">
-          <BookOpen size={48} strokeWidth={1.2} />
-          <p>Not enough words yet!</p>
-          <p className="sub">Learn a few words first, then come back for a quiz.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 結果画面
-  if (finished) {
-    const pct = Math.round((score / questions.length) * 100);
-    let medal, message;
-    if (pct === 100) { medal = '🏆'; message = 'Perfect! Безупречно!'; }
-    else if (pct >= 80) { medal = '🥇'; message = 'Excellent! Отлично!'; }
-    else if (pct >= 60) { medal = '🥈'; message = 'Good job! Хорошо!'; }
-    else if (pct >= 40) { medal = '🥉'; message = 'Keep practicing! Ещё немного!'; }
-    else { medal = '📚'; message = "Don't give up! Не сдавайся!"; }
-
-    return (
-      <div className={`view-overlay ${dark ? 'dark' : ''}`}>
-        <div className="view-header">
-          <h2><Target size={22} /> Quiz Complete</h2>
-          <button className="close-btn" onClick={onClose}><X size={22} /></button>
-        </div>
-        <div className="quiz-result">
-          <div className="quiz-medal">{medal}</div>
-          <h3>{message}</h3>
-          <div className="quiz-score-big">{score} / {questions.length}</div>
-          <div className="quiz-pct">{pct}%</div>
-
-          {wrongWords.length > 0 && (
-            <div className="quiz-review-section">
-              <h4>Words to review:</h4>
-              <div className="quiz-wrong-list">
-                {wrongWords.map(w => (
-                  <div key={w.id} className="quiz-wrong-item">
-                    <span className="qw-ru">{w.word}</span>
-                    <button className="mini-speak" onClick={() => onSpeak(w.word)}>
-                      <Volume2 size={14} />
-                    </button>
-                    <span className="qw-en">{w.meaning}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button className="quiz-done-btn" onClick={onClose}>Done</button>
-        </div>
-      </div>
-    );
-  }
-
-  // 問題タイプのラベル
-  const typeLabels = {
-    ru_to_meaning: '意味を選ぶ',
-    meaning_to_ru: 'ロシア語を選ぶ',
-    listening: '聞き取り',
-    cloze: '穴埋め',
-  };
-
-  return (
-    <div className={`view-overlay ${dark ? 'dark' : ''}`}>
-      <div className="view-header">
-        <h2><Target size={22} /> Quiz {idx + 1} / {questions.length}</h2>
-        <button className="close-btn" onClick={onClose}><X size={22} /></button>
-      </div>
-
-      {/* 進捗バー */}
-      <div className="review-progress">
-        <div className="review-progress-fill" style={{ width: `${(idx / questions.length) * 100}%` }}></div>
-      </div>
-
-      <div className="quiz-area">
-        <span className="quiz-type-label">{typeLabels[current.type]}</span>
-
-        {/* 問題 */}
-        <div className="quiz-question">
-          {current.type === 'listening' ? (
-            <button className="quiz-audio-btn" onClick={() => onSpeak(current.audio)}>
-              <Volume2 size={48} />
-              <span>タップで再生</span>
-            </button>
-          ) : (
-            <h1 className={`quiz-q-text ${current.type === 'cloze' ? 'cloze' : ''}`}>
-              {current.question}
-            </h1>
-          )}
-        </div>
-
-        {/* 選択肢 */}
-        <div className="quiz-options">
-          {current.options.map((opt, i) => {
-            let cls = 'quiz-option';
-            if (answered) {
-              if (opt === current.answer) cls += ' correct';
-              else if (opt === selected) cls += ' wrong';
-              else cls += ' dimmed';
-            }
-            return (
-              <button key={i} className={cls} onClick={() => handleSelect(opt)} disabled={answered}>
-                {opt}
-                {answered && opt === current.answer && <CheckCircle2 size={18} />}
-                {answered && opt === selected && opt !== current.answer && <XCircle size={18} />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 次へボタン */}
-        {answered && (
-          <button className="quiz-next-btn" onClick={handleNext}>
-            {idx + 1 < questions.length ? 'Next →' : 'See Results'}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
 // COMPONENT: ReviewList — words marked "Not yet"
 // ============================================================
 function ReviewList({ notYet, allWords, onClose, onSpeak, onMarkLearned, dark }) {
@@ -1076,10 +820,6 @@ export default function App() {
               <Zap size={18} /> Today's Review
               {srsStats.due > 0 && <span className="badge badge-srs">{srsStats.due}</span>}
             </button>
-            <button onClick={() => { setView('quiz'); setMenuOpen(false); }}>
-              <Target size={18} /> Sunday Quiz
-              {isSunday(getTodayISO()) && <span className="badge badge-quiz">today!</span>}
-            </button>
             <button onClick={() => { setView('review'); setMenuOpen(false); }}>
               <AlertCircle size={18} /> Need Review
               {notYet.length > 0 && <span className="badge">{notYet.length}</span>}
@@ -1110,18 +850,6 @@ export default function App() {
           }}
           onDismiss={() => setShowCatchUp(false)}
         />
-      )}
-
-      {/* ─── Sunday quiz prompt ─── */}
-      {view === 'main' && isSunday(getTodayISO()) && (
-        <div className="quiz-prompt" onClick={() => setView('quiz')}>
-          <Target size={20} />
-          <div className="srs-prompt-text">
-            <strong>Sunday Quiz is ready! 🎉</strong>
-            <span>Test what you learned this week — 10 questions</span>
-          </div>
-          <ChevronRight size={20} />
-        </div>
       )}
 
       {/* ─── Today's review prompt (SRS) ─── */}
@@ -1181,16 +909,6 @@ export default function App() {
           onClose={() => setView('main')}
           onSpeak={speak}
           onAnswer={handleSrsAnswer}
-          dark={dark}
-        />
-      )}
-
-      {/* ─── Sunday Quiz view ─── */}
-      {view === 'quiz' && (
-        <QuizSession
-          allWords={allWords}
-          onClose={() => setView('main')}
-          onSpeak={speak}
           dark={dark}
         />
       )}
@@ -1957,119 +1675,6 @@ const styles = `
 }
 .dark .srs-start-btn { background: #d4a574; color: #25201b; }
 
-/* ─── Quiz: prompt banner ─── */
-.quiz-prompt {
-  display: flex; align-items: center; gap: 12px;
-  max-width: 900px; margin: 16px auto 0; padding: 14px 18px;
-  background: linear-gradient(135deg, #4a7c4a, #3a6a3a);
-  color: #fff; border-radius: 10px; cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 16px rgba(74, 124, 74, 0.25);
-}
-.quiz-prompt:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(74, 124, 74, 0.35); }
-.badge-quiz { background: #4a7c4a !important; font-size: 10px !important; }
-
-/* ─── Quiz: area ─── */
-.quiz-area {
-  max-width: 560px; margin: 0 auto; padding: 24px 16px;
-}
-.quiz-type-label {
-  display: inline-block; font-size: 12px; color: #8b6b48;
-  background: rgba(201, 164, 90, 0.15); padding: 4px 12px;
-  border-radius: 12px; margin-bottom: 16px;
-}
-.dark .quiz-type-label { color: #c9a45a; }
-.quiz-question {
-  background: #faf6ee; border: 1px solid #d4c4a8;
-  border-radius: 16px; padding: 36px 24px; margin-bottom: 20px;
-  text-align: center; min-height: 120px;
-  display: flex; align-items: center; justify-content: center;
-}
-.dark .quiz-question { background: #25201b; border-color: #3a2f24; }
-.quiz-q-text {
-  font-family: 'Old Standard TT', serif; font-size: 38px;
-  font-weight: 700; color: #3c1e0a; margin: 0;
-}
-.dark .quiz-q-text { color: #f4e4c1; }
-.quiz-q-text.cloze { font-size: 26px; line-height: 1.4; }
-.quiz-audio-btn {
-  background: #8b2626; color: #fff; border: none;
-  border-radius: 16px; padding: 24px 32px; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  font-size: 14px;
-}
-.dark .quiz-audio-btn { background: #d4a574; color: #25201b; }
-
-.quiz-options {
-  display: flex; flex-direction: column; gap: 10px;
-}
-.quiz-option {
-  background: #faf6ee; border: 2px solid #d4c4a8;
-  border-radius: 12px; padding: 16px 18px; cursor: pointer;
-  font-size: 17px; text-align: left; transition: all 0.15s;
-  display: flex; align-items: center; justify-content: space-between;
-  color: #3c1e0a;
-}
-.dark .quiz-option { background: #25201b; border-color: #3a2f24; color: #e8dcc6; }
-.quiz-option:hover:not(:disabled) { border-color: #8b2626; background: rgba(139, 38, 38, 0.04); }
-.quiz-option.correct {
-  border-color: #4a7c4a; background: rgba(74, 124, 74, 0.12); color: #4a7c4a; font-weight: 600;
-}
-.quiz-option.wrong {
-  border-color: #c0392b; background: rgba(192, 57, 43, 0.12); color: #c0392b; font-weight: 600;
-}
-.quiz-option.dimmed { opacity: 0.5; }
-.quiz-next-btn {
-  width: 100%; margin-top: 20px;
-  background: #8b2626; color: #fff; border: none;
-  padding: 16px; border-radius: 12px; cursor: pointer;
-  font-size: 16px; font-weight: 600;
-}
-.dark .quiz-next-btn { background: #d4a574; color: #25201b; }
-
-/* ─── Quiz: result ─── */
-.quiz-result {
-  max-width: 480px; margin: 0 auto; padding: 32px 24px;
-  text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;
-}
-.quiz-medal { font-size: 72px; line-height: 1; }
-.quiz-result h3 {
-  font-family: 'Old Standard TT', serif; font-size: 24px; margin: 0;
-}
-.quiz-score-big {
-  font-size: 44px; font-weight: 700; font-family: 'Old Standard TT', serif;
-  color: #8b2626;
-}
-.dark .quiz-score-big { color: #d4a574; }
-.quiz-pct { font-size: 18px; color: #6b5848; }
-.quiz-review-section {
-  width: 100%; margin-top: 16px; text-align: left;
-  background: rgba(201, 164, 90, 0.08); border-radius: 10px; padding: 16px;
-}
-.quiz-review-section h4 {
-  margin: 0 0 12px; font-size: 14px; color: #8b6b48;
-}
-.dark .quiz-review-section h4 { color: #c9a45a; }
-.quiz-wrong-list { display: flex; flex-direction: column; gap: 8px; }
-.quiz-wrong-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 0; border-bottom: 1px dashed #d4c4a8;
-}
-.dark .quiz-wrong-item { border-bottom-color: #3a2f24; }
-.qw-ru {
-  font-family: 'Old Standard TT', serif; font-size: 18px;
-  font-weight: 700; color: #8b2626;
-}
-.dark .qw-ru { color: #d4a574; }
-.qw-en { font-size: 14px; color: #6b5848; }
-.dark .qw-en { color: #a89684; }
-.quiz-done-btn {
-  background: #8b2626; color: #fff; border: none;
-  padding: 14px 40px; border-radius: 24px; cursor: pointer;
-  font-size: 16px; font-weight: 600; margin-top: 16px;
-}
-.dark .quiz-done-btn { background: #d4a574; color: #25201b; }
-
 /* ─── Mobile ─── */
 @media (max-width: 600px) {
   .card-area { padding: 12px 8px; gap: 6px; }
@@ -2084,10 +1689,5 @@ const styles = `
   .flashcard-word { font-size: 42px; }
   .flashcard-meaning { font-size: 22px; }
   .srs-prompt { margin: 12px 8px 0; }
-  .quiz-prompt { margin: 12px 8px 0; }
-  .quiz-q-text { font-size: 32px; }
-  .quiz-q-text.cloze { font-size: 22px; }
-  .quiz-option { font-size: 16px; padding: 14px; }
-  .quiz-medal { font-size: 60px; }
 }
 `;

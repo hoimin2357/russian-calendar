@@ -13,7 +13,9 @@
       "Bash(cp src/App.jsx src/App.jsx.bak_phase1)",
       "Bash(cp \"C:\\\\Users\\\\yayoi\\\\Downloads\\\\App.jsx\" src/App.jsx)",
       "Bash(npm run *)",
-      "Bash(git commit -m 'Phase 2: Add spaced repetition system *)"
+      "Bash(git commit -m 'Phase 2: Add spaced repetition system *)",
+      "Bash(cp src/App.jsx src/App.jsx.bak_srs)",
+      "Bash(git commit -m 'Add Sunday quiz feature *])"
     ]
   }
 }
