@@ -17,7 +17,9 @@
       "Bash(cp src/App.jsx src/App.jsx.bak_srs)",
       "Bash(git commit -m 'Add Sunday quiz feature *])",
       "Bash(cp src/App.jsx src/App.jsx.bak_quiz)",
-      "Bash(git commit -m 'Add gamification \\(XP, levels, badges\\) and English UI *)"
+      "Bash(git commit -m 'Add gamification \\(XP, levels, badges\\) and English UI *)",
+      "Bash(cp src/App.jsx src/App.jsx.bak_gamif)",
+      "Bash(git commit -m 'Add Duolingo companion mode \\(pace, dual streak, log\\) *)"
     ]
   }
 }
