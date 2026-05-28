@@ -1,28 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ChevronLeft, ChevronRight, Volume2, Bookmark, BookmarkCheck,
-  Calendar, Search, X, Moon, Sun, Sparkles, TrendingUp,
+  Calendar, Search, X, Moon, Sun, Sparkles, TrendingUp, Award,
   Eye, EyeOff, Menu, BookOpen, AlertCircle, Brain, CheckCircle2,
   XCircle, RefreshCw, Home as HomeIcon, Zap, Target, Trophy,
-  RotateCcw, Layers, Globe, ChevronDown
+  RotateCcw, Layers
 } from 'lucide-react';
-
-// 各言語のデータ（同じ構造: 219日 A1→A2→B1）
-import ruData from './data/ru.json';
-import koData from './data/ko.json';
-import zhData from './data/zh.json';
-import enData from './data/en.json';
-
-// ============================================================
-// LANGUAGES — 言語ハブ設定
-// ============================================================
-const LANGUAGES = [
-  { code: 'ru', name: 'Russian',  native: 'Русский',  flag: '🇷🇺', tts: 'ru-RU', data: ruData },
-  { code: 'ko', name: 'Korean',   native: '한국어',    flag: '🇰🇷', tts: 'ko-KR', data: koData },
-  { code: 'zh', name: 'Chinese',  native: '中文',      flag: '🇨🇳', tts: 'zh-CN', data: zhData },
-  { code: 'en', name: 'English',  native: 'English',  flag: '🇬🇧', tts: 'en-US', data: enData },
-];
-const getLanguage = (code) => LANGUAGES.find(l => l.code === code) || LANGUAGES[0];
+import wordData from './data/words.json';
 
 // ============================================================
 // SRS ENGINE — Spaced Repetition (間隔反復学習)
@@ -293,40 +277,35 @@ const getRecentDays = (todayISO, n) => {
 // ============================================================
 // CONSTANTS & HELPERS
 // ============================================================
-// localStorageキーのベース名（実際は言語コードが前置される: 例 rcal_ru_srs）
-const STORAGE_BASE = {
-  LEARNED: 'learned',
-  NOT_YET: 'not_yet',
-  BOOKMARKED: 'bookmarked',
-  LAST_VISIT: 'last_visit',
-  STREAK_DATA: 'streak',
-  SRS: 'srs',
-  GAMIFICATION: 'gamification',
-  DUOLINGO: 'duolingo',
-};
-// 言語別キーを生成（例: rcal_ru_srs）
-const langKey = (langCode, base) => `rcal_${langCode}_${base}`;
-// 言語に依存しないグローバルキー
-const GLOBAL_KEYS = {
+const STORAGE_KEYS = {
+  LEARNED: 'rcal_learned',
+  NOT_YET: 'rcal_not_yet',
+  BOOKMARKED: 'rcal_bookmarked',
+  LAST_VISIT: 'rcal_last_visit',
   THEME: 'rcal_theme',
-  CURRENT_LANG: 'rcal_current_lang',
+  STREAK_DATA: 'rcal_streak',
+  SRS: 'rcal_srs',
+  GAMIFICATION: 'rcal_gamification',
+  DUOLINGO: 'rcal_duolingo',
 };
 
 const getTodayISO = () => new Date().toISOString().split('T')[0];
 
-const findTodayIndex = (wordData) => {
+const findTodayIndex = () => {
   const today = getTodayISO();
   const idx = wordData.findIndex(d => d.date === today);
   if (idx >= 0) return idx;
+  // If today is before start or after end
   const first = wordData[0]?.date;
   const last = wordData[wordData.length - 1]?.date;
   if (today < first) return 0;
   if (today > last) return wordData.length - 1;
+  // Otherwise find closest
   return 0;
 };
 
 // ============================================================
-// CUSTOM HOOK: localStorage state（key変更に追従）
+// CUSTOM HOOK: localStorage state
 // ============================================================
 function useLocalStorage(key, initial) {
   const [value, setValue] = useState(() => {
@@ -337,26 +316,9 @@ function useLocalStorage(key, initial) {
       return initial;
     }
   });
-
-  // keyが変わったら、新しいkeyの値を読み込み直す（言語切替対応）
-  const prevKey = useRef(key);
-  useEffect(() => {
-    if (prevKey.current !== key) {
-      prevKey.current = key;
-      try {
-        const stored = localStorage.getItem(key);
-        setValue(stored ? JSON.parse(stored) : initial);
-      } catch {
-        setValue(initial);
-      }
-    }
-  }, [key, initial]);
-
-  // 値が変わったら保存
   useEffect(() => {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
   }, [key, value]);
-
   return [value, setValue];
 }
 
@@ -1090,68 +1052,30 @@ function CatchUpBanner({ missedDays, onJump, onDismiss }) {
 // MAIN APP
 // ============================================================
 export default function App() {
-  // ─── 言語選択（グローバル）─────────────────────────────────
-  const [langCode, setLangCode] = useLocalStorage(GLOBAL_KEYS.CURRENT_LANG, 'ru');
-  const lang = getLanguage(langCode);
-  const wordData = lang.data;
-  const [showLangPicker, setShowLangPicker] = useState(false);
-
-  // ─── 既存ロシア語データの移行（旧キー → 新キー）────────────
-  // 一度だけ実行: rcal_srs → rcal_ru_srs など
-  useEffect(() => {
-    const migrationDone = localStorage.getItem('rcal_migrated_v7');
-    if (migrationDone) return;
-    const oldKeys = {
-      'rcal_learned': 'rcal_ru_learned',
-      'rcal_not_yet': 'rcal_ru_not_yet',
-      'rcal_bookmarked': 'rcal_ru_bookmarked',
-      'rcal_last_visit': 'rcal_ru_last_visit',
-      'rcal_streak': 'rcal_ru_streak',
-      'rcal_srs': 'rcal_ru_srs',
-      'rcal_gamification': 'rcal_ru_gamification',
-      'rcal_duolingo': 'rcal_ru_duolingo',
-    };
-    try {
-      for (const [oldK, newK] of Object.entries(oldKeys)) {
-        const val = localStorage.getItem(oldK);
-        if (val !== null && localStorage.getItem(newK) === null) {
-          localStorage.setItem(newK, val);
-        }
-      }
-      localStorage.setItem('rcal_migrated_v7', 'true');
-    } catch {}
-  }, []);
-
-  // ─── State（言語ごとに分離）────────────────────────────────
-  const [currentIdx, setCurrentIdx] = useState(() => findTodayIndex(wordData));
-  const [learned, setLearned] = useLocalStorage(langKey(langCode, STORAGE_BASE.LEARNED), []);
-  const [notYet, setNotYet] = useLocalStorage(langKey(langCode, STORAGE_BASE.NOT_YET), []);
-  const [bookmarked, setBookmarked] = useLocalStorage(langKey(langCode, STORAGE_BASE.BOOKMARKED), []);
-  const [dark, setDark] = useLocalStorage(GLOBAL_KEYS.THEME, false); // テーマはグローバル
-  const [lastVisit, setLastVisit] = useLocalStorage(langKey(langCode, STORAGE_BASE.LAST_VISIT), null);
-  const [srsData, setSrsData] = useLocalStorage(langKey(langCode, STORAGE_BASE.SRS), {});
-  const [gamif, setGamif] = useLocalStorage(langKey(langCode, STORAGE_BASE.GAMIFICATION), {
+  // ─── State ───────────────────────────────────────────────
+  const [currentIdx, setCurrentIdx] = useState(() => findTodayIndex());
+  const [learned, setLearned] = useLocalStorage(STORAGE_KEYS.LEARNED, []);
+  const [notYet, setNotYet] = useLocalStorage(STORAGE_KEYS.NOT_YET, []);
+  const [bookmarked, setBookmarked] = useLocalStorage(STORAGE_KEYS.BOOKMARKED, []);
+  const [dark, setDark] = useLocalStorage(STORAGE_KEYS.THEME, false);
+  const [lastVisit, setLastVisit] = useLocalStorage(STORAGE_KEYS.LAST_VISIT, null);
+  const [srsData, setSrsData] = useLocalStorage(STORAGE_KEYS.SRS, {});
+  const [gamif, setGamif] = useLocalStorage(STORAGE_KEYS.GAMIFICATION, {
     xp: 0,
     streak: 0,
     lastStreakDate: null,
     quizCount: 0,
     quizPerfect: false,
-    seenBadges: [],
+    seenBadges: [], // 既に通知したバッジ（新規解除の検出用）
   });
-  const [levelUpNotice, setLevelUpNotice] = useState(null);
-  const [newBadge, setNewBadge] = useState(null);
-  const [duoLog, setDuoLog] = useLocalStorage(langKey(langCode, STORAGE_BASE.DUOLINGO), {});
+  const [levelUpNotice, setLevelUpNotice] = useState(null); // レベルアップ通知
+  const [newBadge, setNewBadge] = useState(null); // 新バッジ通知
+  const [duoLog, setDuoLog] = useLocalStorage(STORAGE_KEYS.DUOLINGO, {});
 
-  const [view, setView] = useState('main');
+  const [view, setView] = useState('main'); // 'main' | 'review' | 'manual' | 'index' | 'stats'
   const [menuOpen, setMenuOpen] = useState(false);
-  const [tearing, setTearing] = useState(null);
+  const [tearing, setTearing] = useState(null); // 'left' | 'right' | null
   const [showCatchUp, setShowCatchUp] = useState(true);
-
-  // 言語が変わったら今日のインデックスにリセット
-  useEffect(() => {
-    setCurrentIdx(findTodayIndex(wordData));
-    setView('main');
-  }, [langCode]);
 
   const dayEntry = wordData[currentIdx];
 
@@ -1176,7 +1100,7 @@ export default function App() {
       day_date: d.date,
       day_theme: d.theme,
     })));
-  }, [wordData]);
+  }, []);
 
   // ─── Gamification: XP加算（先に定義：他のeffectから参照されるため）─
   const addXP = useCallback((amount) => {
@@ -1288,7 +1212,7 @@ export default function App() {
   // ─── Duolingo: ペース & 今日の記録 ─────────────────────────
   const paceStatus = useMemo(
     () => getPaceStatus(wordData, srsStats.total, getTodayISO()),
-    [srsStats.total, wordData]
+    [srsStats.total]
   );
   const duoTodayDone = !!duoLog[getTodayISO()];
 
@@ -1335,10 +1259,10 @@ export default function App() {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang.tts; // 選択中の言語に応じたTTS
+    u.lang = 'ru-RU';
     u.rate = 0.85;
     window.speechSynthesis.speak(u);
-  }, [lang.tts]);
+  }, []);
 
   // ─── Navigation ───────────────────────────────────────────
   const goPrev = useCallback(() => {
@@ -1363,11 +1287,11 @@ export default function App() {
 
   const goToday = useCallback(() => {
     // FIX: recompute today's index on click (not just mount)
-    const todayIdx = findTodayIndex(wordData);
+    const todayIdx = findTodayIndex();
     setCurrentIdx(todayIdx);
     setView('main');
     setMenuOpen(false);
-  }, [wordData]);
+  }, []);
 
   // ─── Keyboard nav ─────────────────────────────────────────
   useEffect(() => {
@@ -1417,44 +1341,14 @@ export default function App() {
         <button className="icon-btn" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
           <Menu size={22} />
         </button>
-        <button className="lang-switcher" onClick={() => setShowLangPicker(true)}>
-          <span className="lang-flag">{lang.flag}</span>
-          <span className="lang-name">{lang.native}</span>
-          <ChevronDown size={16} />
-        </button>
+        <div className="app-title">
+          <BookOpen size={20} />
+          <span>Russian Daily</span>
+        </div>
         <button className="icon-btn" onClick={() => setDark(!dark)} aria-label="Theme">
           {dark ? <Sun size={20} /> : <Moon size={20} />}
         </button>
       </div>
-
-      {/* ─── Language Picker Modal ─── */}
-      {showLangPicker && (
-        <div className="lang-picker-overlay" onClick={() => setShowLangPicker(false)}>
-          <div className="lang-picker" onClick={(e) => e.stopPropagation()}>
-            <div className="lang-picker-header">
-              <Globe size={20} />
-              <span>Choose a language</span>
-            </div>
-            {LANGUAGES.map(l => (
-              <button
-                key={l.code}
-                className={`lang-option ${l.code === langCode ? 'active' : ''}`}
-                onClick={() => {
-                  setLangCode(l.code);
-                  setShowLangPicker(false);
-                }}
-              >
-                <span className="lang-option-flag">{l.flag}</span>
-                <div className="lang-option-text">
-                  <span className="lang-option-native">{l.native}</span>
-                  <span className="lang-option-name">{l.name}</span>
-                </div>
-                {l.code === langCode && <CheckCircle2 size={18} />}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ─── XP Bar (always visible) ─── */}
       <div className="xp-bar-container" onClick={() => { setView('achievements'); setMenuOpen(false); }}>
@@ -2993,54 +2887,4 @@ const styles = `
   .duo-guide-grid { grid-template-columns: 1fr; }
   .duo-today-card { flex-direction: column; align-items: stretch; text-align: center; }
 }
-
-/* ─── Language Switcher ─── */
-.lang-switcher {
-  display: flex; align-items: center; gap: 6px;
-  background: rgba(139, 38, 38, 0.08); border: none;
-  padding: 6px 14px; border-radius: 18px; cursor: pointer;
-  color: inherit; font-size: 15px; font-weight: 600;
-  font-family: 'Old Standard TT', serif;
-}
-.lang-switcher:hover { background: rgba(139, 38, 38, 0.15); }
-.dark .lang-switcher { background: rgba(212, 165, 116, 0.12); }
-.lang-flag { font-size: 18px; }
-.lang-name { font-size: 15px; }
-
-.lang-picker-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-  z-index: 250; display: flex; align-items: center; justify-content: center;
-  animation: fadeIn 0.2s ease; padding: 20px;
-}
-.lang-picker {
-  background: #faf6ee; border-radius: 20px; padding: 12px;
-  max-width: 360px; width: 100%;
-  animation: toastPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-  box-shadow: 0 12px 48px rgba(0,0,0,0.3);
-}
-.dark .lang-picker { background: #25201b; }
-.lang-picker-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; font-size: 16px; font-weight: 700;
-  color: #8b2626; font-family: 'Old Standard TT', serif;
-}
-.dark .lang-picker-header { color: #d4a574; }
-.lang-option {
-  display: flex; align-items: center; gap: 14px; width: 100%;
-  background: none; border: none; padding: 14px 16px; cursor: pointer;
-  border-radius: 12px; color: inherit; transition: background 0.15s;
-}
-.lang-option:hover { background: rgba(139, 38, 38, 0.06); }
-.dark .lang-option:hover { background: rgba(212, 165, 116, 0.08); }
-.lang-option.active { background: rgba(139, 38, 38, 0.1); }
-.dark .lang-option.active { background: rgba(212, 165, 116, 0.12); }
-.lang-option-flag { font-size: 32px; }
-.lang-option-text { flex: 1; display: flex; flex-direction: column; text-align: left; }
-.lang-option-native {
-  font-size: 18px; font-weight: 700; font-family: 'Old Standard TT', serif;
-}
-.lang-option-name { font-size: 12px; color: #6b5848; }
-.dark .lang-option-name { color: #a89684; }
-.lang-option.active { color: #8b2626; }
-.dark .lang-option.active { color: #d4a574; }
 `;
