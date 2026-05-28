@@ -3,64 +3,9 @@ import {
   ChevronLeft, ChevronRight, Volume2, Bookmark, BookmarkCheck,
   Calendar, Search, X, Moon, Sun, Sparkles, TrendingUp, Award,
   Eye, EyeOff, Menu, BookOpen, AlertCircle, Brain, CheckCircle2,
-  XCircle, RefreshCw, Home as HomeIcon, Zap, Target, Trophy,
-  RotateCcw, Layers
+  XCircle, RefreshCw, Home as HomeIcon
 } from 'lucide-react';
 import wordData from './data/words.json';
-
-// ============================================================
-// SRS ENGINE — Spaced Repetition (間隔反復学習)
-// 標準間隔: 1, 3, 7, 15, 30日
-// ============================================================
-const SRS_INTERVALS = [1, 3, 7, 15, 30];
-const MAX_STAGE = SRS_INTERVALS.length - 1;
-
-const srsAddDays = (isoDate, days) => {
-  const d = new Date(isoDate);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
-};
-
-const createSrsEntry = (seenDate) => ({
-  stage: 0,
-  nextReview: srsAddDays(seenDate, SRS_INTERVALS[0]),
-  seen: seenDate,
-  lapses: 0,
-  mastered: false,
-  lastReviewed: null,
-});
-
-const promoteEntry = (entry, reviewDate) => {
-  const newStage = Math.min(entry.stage + 1, MAX_STAGE);
-  const isMastered = entry.stage >= MAX_STAGE;
-  return {
-    ...entry,
-    stage: newStage,
-    nextReview: srsAddDays(reviewDate, SRS_INTERVALS[newStage]),
-    mastered: isMastered,
-    lastReviewed: reviewDate,
-  };
-};
-
-const demoteEntry = (entry, reviewDate) => ({
-  ...entry,
-  stage: 0,
-  nextReview: srsAddDays(reviewDate, SRS_INTERVALS[0]),
-  lapses: entry.lapses + 1,
-  mastered: false,
-  lastReviewed: reviewDate,
-});
-
-const isDue = (entry, today) => {
-  if (!entry || entry.mastered) return false;
-  return entry.nextReview <= today;
-};
-
-const getStrength = (entry) => {
-  if (!entry) return 0;
-  if (entry.mastered) return 100;
-  return Math.round((entry.stage / (MAX_STAGE + 1)) * 100);
-};
 
 // ============================================================
 // CONSTANTS & HELPERS
@@ -72,7 +17,6 @@ const STORAGE_KEYS = {
   LAST_VISIT: 'rcal_last_visit',
   THEME: 'rcal_theme',
   STREAK_DATA: 'rcal_streak',
-  SRS: 'rcal_srs',
 };
 
 const getTodayISO = () => new Date().toISOString().split('T')[0];
@@ -300,156 +244,6 @@ function DayCard({ dayEntry, onSpeak, learned, notYet, bookmarked,
 }
 
 // ============================================================
-// COMPONENT: ReviewSession — SRS-based flashcard review
-// 間隔反復の復習モード（フラッシュカード方式）
-// ============================================================
-function ReviewSession({ dueWords, srsData, onClose, onSpeak, onAnswer, dark }) {
-  const [idx, setIdx] = useState(0);
-  const [revealed, setRevealed] = useState(false);
-  const [sessionResults, setSessionResults] = useState({ correct: 0, wrong: 0 });
-  const [finished, setFinished] = useState(false);
-
-  // セッション開始時の対象単語を固定（途中で変わらないように）
-  const [queue] = useState(() => [...dueWords]);
-
-  const current = queue[idx];
-
-  const handleAnswer = (remembered) => {
-    onAnswer(current.id, remembered);
-    setSessionResults(r => ({
-      correct: r.correct + (remembered ? 1 : 0),
-      wrong: r.wrong + (remembered ? 0 : 1),
-    }));
-    // 次のカードへ
-    if (idx + 1 < queue.length) {
-      setIdx(idx + 1);
-      setRevealed(false);
-    } else {
-      setFinished(true);
-    }
-  };
-
-  // 対象が0の場合
-  if (queue.length === 0) {
-    return (
-      <div className={`view-overlay ${dark ? 'dark' : ''}`}>
-        <div className="view-header">
-          <h2><Zap size={22} /> Today's Review</h2>
-          <button className="close-btn" onClick={onClose}><X size={22} /></button>
-        </div>
-        <div className="empty-state">
-          <Trophy size={48} strokeWidth={1.2} />
-          <p>All caught up! 🎉</p>
-          <p className="sub">No words due for review today. Come back tomorrow!</p>
-        </div>
-      </div>
-    );
-  }
-
-  // セッション完了画面
-  if (finished) {
-    const total = sessionResults.correct + sessionResults.wrong;
-    const pct = total > 0 ? Math.round((sessionResults.correct / total) * 100) : 0;
-    return (
-      <div className={`view-overlay ${dark ? 'dark' : ''}`}>
-        <div className="view-header">
-          <h2><Zap size={22} /> Review Complete</h2>
-          <button className="close-btn" onClick={onClose}><X size={22} /></button>
-        </div>
-        <div className="session-complete">
-          <Trophy size={64} strokeWidth={1.2} className="complete-trophy" />
-          <h3>Great work! 🎉</h3>
-          <div className="session-score">
-            <div className="score-item correct">
-              <span className="score-num">{sessionResults.correct}</span>
-              <span className="score-lbl">Remembered</span>
-            </div>
-            <div className="score-item wrong">
-              <span className="score-num">{sessionResults.wrong}</span>
-              <span className="score-lbl">Need practice</span>
-            </div>
-          </div>
-          <div className="session-pct">{pct}% recall rate</div>
-          <p className="session-note">
-            Words you remembered will return at longer intervals.
-            Words you missed will come back tomorrow.
-          </p>
-          <button className="session-done-btn" onClick={onClose}>Done</button>
-        </div>
-      </div>
-    );
-  }
-
-  const entry = srsData[current.id];
-  const stageLabel = entry
-    ? (entry.mastered ? 'Mastered' : `Stage ${entry.stage + 1}/5 · every ${SRS_INTERVALS[entry.stage]}d`)
-    : 'New';
-
-  return (
-    <div className={`view-overlay ${dark ? 'dark' : ''}`}>
-      <div className="view-header">
-        <h2><Zap size={22} /> Review {idx + 1} / {queue.length}</h2>
-        <button className="close-btn" onClick={onClose}><X size={22} /></button>
-      </div>
-
-      {/* 進捗バー */}
-      <div className="review-progress">
-        <div className="review-progress-fill" style={{ width: `${(idx / queue.length) * 100}%` }}></div>
-      </div>
-
-      <div className="flashcard-area">
-        <div className="flashcard">
-          <span className="flashcard-stage">{stageLabel}</span>
-
-          {/* 表面: ロシア語 */}
-          <div className="flashcard-front">
-            <h1 className="flashcard-word">{current.word}</h1>
-            <button className="speak-btn" onClick={() => onSpeak(current.word)}>
-              <Volume2 size={24} />
-            </button>
-          </div>
-
-          {/* 裏面: 意味（revealするまで隠す） */}
-          {revealed ? (
-            <div className="flashcard-back">
-              <div className="flashcard-pron">{current.pronunciation} · {current.ipa}</div>
-              <div className="flashcard-meaning">{current.meaning}</div>
-              <div className="flashcard-sentence">
-                {current.sentence_ru}
-                <button className="mini-speak" onClick={() => onSpeak(current.sentence_ru)}>
-                  <Volume2 size={14} />
-                </button>
-              </div>
-              <div className="flashcard-sentence-en">{current.sentence_en}</div>
-            </div>
-          ) : (
-            <button className="flashcard-reveal" onClick={() => setRevealed(true)}>
-              <Eye size={20} /> 思い出せたら、タップして答えを確認
-            </button>
-          )}
-        </div>
-
-        {/* 回答ボタン（revealed後のみ表示） */}
-        {revealed && (
-          <div className="flashcard-answers">
-            <button className="answer-btn wrong" onClick={() => handleAnswer(false)}>
-              <RotateCcw size={20} />
-              <span>忘れた</span>
-              <small>明日また</small>
-            </button>
-            <button className="answer-btn correct" onClick={() => handleAnswer(true)}>
-              <CheckCircle2 size={20} />
-              <span>覚えてた</span>
-              <small>{entry ? `${SRS_INTERVALS[Math.min(entry.stage + 1, MAX_STAGE)]}日後` : '次へ'}</small>
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
 // COMPONENT: ReviewList — words marked "Not yet"
 // ============================================================
 function ReviewList({ notYet, allWords, onClose, onSpeak, onMarkLearned, dark }) {
@@ -631,7 +425,6 @@ export default function App() {
   const [bookmarked, setBookmarked] = useLocalStorage(STORAGE_KEYS.BOOKMARKED, []);
   const [dark, setDark] = useLocalStorage(STORAGE_KEYS.THEME, false);
   const [lastVisit, setLastVisit] = useLocalStorage(STORAGE_KEYS.LAST_VISIT, null);
-  const [srsData, setSrsData] = useLocalStorage(STORAGE_KEYS.SRS, {});
 
   const [view, setView] = useState('main'); // 'main' | 'review' | 'manual' | 'index' | 'stats'
   const [menuOpen, setMenuOpen] = useState(false);
@@ -662,56 +455,6 @@ export default function App() {
       day_theme: d.theme,
     })));
   }, []);
-
-  // ─── SRS: 表示中の日の単語を自動登録 ───────────────────────
-  // 今日（カレンダー上の今日）以前の日を開いたら、その単語をSRSに登録
-  useEffect(() => {
-    const today = getTodayISO();
-    // 未来の単語は登録しない（まだ習っていないので）
-    if (dayEntry.date > today) return;
-
-    setSrsData(prev => {
-      let changed = false;
-      const next = { ...prev };
-      for (const w of dayEntry.words) {
-        if (!next[w.id]) {
-          next[w.id] = createSrsEntry(today);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [dayEntry, setSrsData]);
-
-  // ─── SRS: 今日復習すべき単語 ───────────────────────────────
-  const dueWords = useMemo(() => {
-    const today = getTodayISO();
-    return allWords.filter(w => isDue(srsData[w.id], today));
-  }, [allWords, srsData]);
-
-  // ─── SRS: 復習の回答を処理 ─────────────────────────────────
-  const handleSrsAnswer = useCallback((wordId, remembered) => {
-    const today = getTodayISO();
-    setSrsData(prev => {
-      const entry = prev[wordId] || createSrsEntry(today);
-      const updated = remembered
-        ? promoteEntry(entry, today)
-        : demoteEntry(entry, today);
-      return { ...prev, [wordId]: updated };
-    });
-  }, [setSrsData]);
-
-  // ─── SRS: 統計 ─────────────────────────────────────────────
-  const srsStats = useMemo(() => {
-    const entries = Object.values(srsData);
-    const today = getTodayISO();
-    return {
-      total: entries.length,
-      due: entries.filter(e => isDue(e, today)).length,
-      mastered: entries.filter(e => e.mastered).length,
-      learning: entries.filter(e => !e.mastered).length,
-    };
-  }, [srsData]);
 
   // ─── Speech ───────────────────────────────────────────────
   const speak = useCallback((text) => {
@@ -816,10 +559,6 @@ export default function App() {
             <button onClick={() => { goToday(); }}>
               <HomeIcon size={18} /> Today
             </button>
-            <button onClick={() => { setView('srs'); setMenuOpen(false); }}>
-              <Zap size={18} /> Today's Review
-              {srsStats.due > 0 && <span className="badge badge-srs">{srsStats.due}</span>}
-            </button>
             <button onClick={() => { setView('review'); setMenuOpen(false); }}>
               <AlertCircle size={18} /> Need Review
               {notYet.length > 0 && <span className="badge">{notYet.length}</span>}
@@ -850,18 +589,6 @@ export default function App() {
           }}
           onDismiss={() => setShowCatchUp(false)}
         />
-      )}
-
-      {/* ─── Today's review prompt (SRS) ─── */}
-      {view === 'main' && dueWords.length > 0 && (
-        <div className="srs-prompt" onClick={() => setView('srs')}>
-          <Zap size={20} />
-          <div className="srs-prompt-text">
-            <strong>{dueWords.length} word{dueWords.length > 1 ? 's' : ''} ready to review</strong>
-            <span>Tap to start today's spaced-repetition session</span>
-          </div>
-          <ChevronRight size={20} />
-        </div>
       )}
 
       {/* ─── Main view ─── */}
@@ -899,18 +626,6 @@ export default function App() {
             <ChevronRight size={28} />
           </button>
         </div>
-      )}
-
-      {/* ─── SRS Review Session view ─── */}
-      {view === 'srs' && (
-        <ReviewSession
-          dueWords={dueWords}
-          srsData={srsData}
-          onClose={() => setView('main')}
-          onSpeak={speak}
-          onAnswer={handleSrsAnswer}
-          dark={dark}
-        />
       )}
 
       {/* ─── Review view ─── */}
@@ -953,30 +668,6 @@ export default function App() {
               <div><div className="mini-num">{stats.notYet}</div><div className="mini-lbl">To Review</div></div>
               <div><div className="mini-num">{stats.bookmarked}</div><div className="mini-lbl">Bookmarked</div></div>
               <div><div className="mini-num">{currentIdx + 1}</div><div className="mini-lbl">Day Number</div></div>
-            </div>
-
-            {/* SRS統計 */}
-            <div className="srs-stats-section">
-              <h3 className="srs-stats-title"><Zap size={18} /> Spaced Repetition</h3>
-              <div className="stat-mini-grid">
-                <div className="srs-stat-due">
-                  <div className="mini-num">{srsStats.due}</div>
-                  <div className="mini-lbl">Due Today</div>
-                </div>
-                <div className="srs-stat-learning">
-                  <div className="mini-num">{srsStats.learning}</div>
-                  <div className="mini-lbl">Learning</div>
-                </div>
-                <div className="srs-stat-mastered">
-                  <div className="mini-num">{srsStats.mastered}</div>
-                  <div className="mini-lbl">Mastered 🏆</div>
-                </div>
-              </div>
-              {srsStats.due > 0 && (
-                <button className="srs-start-btn" onClick={() => setView('srs')}>
-                  <Zap size={18} /> Start Review ({srsStats.due})
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -1527,154 +1218,6 @@ const styles = `
 .index-words { color: #6b5848; font-style: italic; }
 .dark .index-words { color: #a89684; }
 
-/* ─── SRS: Review prompt banner ─── */
-.srs-prompt {
-  display: flex; align-items: center; gap: 12px;
-  max-width: 900px; margin: 16px auto 0; padding: 14px 18px;
-  background: linear-gradient(135deg, #8b2626, #6b1818);
-  color: #fff; border-radius: 10px; cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 16px rgba(139, 38, 38, 0.25);
-}
-.srs-prompt:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 38, 38, 0.35); }
-.dark .srs-prompt { background: linear-gradient(135deg, #d4a574, #b08654); color: #25201b; }
-.srs-prompt-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.srs-prompt-text strong { font-size: 15px; }
-.srs-prompt-text span { font-size: 12px; opacity: 0.85; }
-
-.badge-srs { background: #c9a45a !important; }
-
-/* ─── SRS: Flashcard ─── */
-.review-progress {
-  height: 4px; background: #d4c4a8; margin: 0;
-}
-.dark .review-progress { background: #3a2f24; }
-.review-progress-fill {
-  height: 100%; background: #8b2626; transition: width 0.3s;
-}
-.dark .review-progress-fill { background: #d4a574; }
-
-.flashcard-area {
-  max-width: 600px; margin: 0 auto; padding: 24px 16px;
-}
-.flashcard {
-  background: #faf6ee; border: 1px solid #d4c4a8;
-  border-radius: 16px; padding: 32px 24px;
-  box-shadow: 0 4px 24px rgba(60, 30, 10, 0.1);
-  position: relative; min-height: 280px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.dark .flashcard { background: #25201b; border-color: #3a2f24; }
-.flashcard-stage {
-  position: absolute; top: 14px; right: 16px;
-  font-size: 11px; color: #8b6b48; background: rgba(201, 164, 90, 0.15);
-  padding: 3px 10px; border-radius: 10px;
-}
-.dark .flashcard-stage { color: #c9a45a; }
-.flashcard-front {
-  display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
-}
-.flashcard-word {
-  font-family: 'Old Standard TT', serif; font-size: 52px;
-  font-weight: 700; color: #3c1e0a; margin: 0;
-}
-.dark .flashcard-word { color: #f4e4c1; }
-.flashcard-reveal {
-  background: rgba(139, 38, 38, 0.08); border: 1px dashed #8b2626;
-  color: #8b2626; padding: 16px 20px; border-radius: 10px;
-  cursor: pointer; font-size: 15px; font-weight: 500;
-  display: flex; align-items: center; gap: 8px;
-}
-.dark .flashcard-reveal { border-color: #d4a574; color: #d4a574; }
-.flashcard-back {
-  text-align: center; animation: fadeIn 0.2s ease;
-}
-.flashcard-pron {
-  font-size: 14px; color: #8b6b48; font-style: italic; margin-bottom: 10px;
-}
-.flashcard-meaning {
-  font-size: 26px; font-weight: 600; color: #3c1e0a; margin-bottom: 16px;
-}
-.dark .flashcard-meaning { color: #f4e4c1; }
-.flashcard-sentence {
-  font-family: 'Old Standard TT', serif; font-size: 18px;
-  font-style: italic; margin-bottom: 4px;
-  display: flex; align-items: center; gap: 8px; justify-content: center;
-}
-.flashcard-sentence-en { font-size: 13px; color: #6b5848; }
-.dark .flashcard-sentence-en { color: #a89684; }
-
-.flashcard-answers {
-  display: flex; gap: 12px; margin-top: 20px;
-}
-.answer-btn {
-  flex: 1; padding: 16px; border: 2px solid; border-radius: 12px;
-  background: #faf6ee; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  font-size: 15px; font-weight: 600; transition: all 0.15s;
-}
-.dark .answer-btn { background: #2a241e; }
-.answer-btn small { font-size: 11px; opacity: 0.7; font-weight: 400; }
-.answer-btn.wrong { border-color: #c9a45a; color: #a07a30; }
-.answer-btn.wrong:hover { background: #c9a45a; color: #fff; }
-.answer-btn.correct { border-color: #4a7c4a; color: #4a7c4a; }
-.answer-btn.correct:hover { background: #4a7c4a; color: #fff; }
-
-/* ─── SRS: Session complete ─── */
-.session-complete {
-  max-width: 480px; margin: 0 auto; padding: 40px 24px;
-  text-align: center; display: flex; flex-direction: column;
-  align-items: center; gap: 16px;
-}
-.complete-trophy { color: #c9a45a; }
-.session-complete h3 {
-  font-family: 'Old Standard TT', serif; font-size: 26px; margin: 0;
-}
-.session-score { display: flex; gap: 32px; margin: 12px 0; }
-.score-item { display: flex; flex-direction: column; }
-.score-num { font-size: 40px; font-weight: 700; font-family: 'Old Standard TT', serif; }
-.score-item.correct .score-num { color: #4a7c4a; }
-.score-item.wrong .score-num { color: #c9a45a; }
-.score-lbl { font-size: 12px; color: #6b5848; }
-.session-pct {
-  font-size: 18px; font-weight: 600; color: #8b2626;
-}
-.dark .session-pct { color: #d4a574; }
-.session-note {
-  font-size: 13px; color: #6b5848; line-height: 1.6; max-width: 360px;
-}
-.dark .session-note { color: #a89684; }
-.session-done-btn {
-  background: #8b2626; color: #fff; border: none;
-  padding: 12px 32px; border-radius: 20px; cursor: pointer;
-  font-size: 15px; font-weight: 600; margin-top: 8px;
-}
-.dark .session-done-btn { background: #d4a574; color: #25201b; }
-
-/* ─── SRS: Stats section ─── */
-.srs-stats-section {
-  margin-top: 8px; padding-top: 20px;
-  border-top: 1px dashed #d4c4a8;
-}
-.dark .srs-stats-section { border-top-color: #3a2f24; }
-.srs-stats-title {
-  display: flex; align-items: center; gap: 8px;
-  font-family: 'Old Standard TT', serif; font-size: 18px;
-  color: #8b2626; margin: 0 0 14px;
-}
-.dark .srs-stats-title { color: #d4a574; }
-.srs-stat-due .mini-num { color: #8b2626; }
-.srs-stat-mastered .mini-num { color: #4a7c4a; }
-.dark .srs-stat-due .mini-num { color: #d4a574; }
-.srs-start-btn {
-  width: 100%; margin-top: 14px;
-  background: #8b2626; color: #fff; border: none;
-  padding: 14px; border-radius: 10px; cursor: pointer;
-  font-size: 15px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.dark .srs-start-btn { background: #d4a574; color: #25201b; }
-
 /* ─── Mobile ─── */
 @media (max-width: 600px) {
   .card-area { padding: 12px 8px; gap: 6px; }
@@ -1686,8 +1229,5 @@ const styles = `
   .index-day { grid-template-columns: 80px 1fr; }
   .index-words { grid-column: 1 / -1; padding-top: 4px; }
   .stat-mini-grid { grid-template-columns: 1fr; }
-  .flashcard-word { font-size: 42px; }
-  .flashcard-meaning { font-size: 22px; }
-  .srs-prompt { margin: 12px 8px 0; }
 }
 `;

@@ -9,7 +9,11 @@
       "Bash(git commit -m 'Add images for days 1-10 *)",
       "Bash(git push *)",
       "Bash(git commit -m 'Update images *)",
-      "Bash(git commit -m 'Add images for days 1-30 \\(62 words\\) *)"
+      "Bash(git commit -m 'Add images for days 1-30 \\(62 words\\) *)",
+      "Bash(cp src/App.jsx src/App.jsx.bak_phase1)",
+      "Bash(cp \"C:\\\\Users\\\\yayoi\\\\Downloads\\\\App.jsx\" src/App.jsx)",
+      "Bash(npm run *)",
+      "Bash(git commit -m 'Phase 2: Add spaced repetition system *)"
     ]
   }
 }
