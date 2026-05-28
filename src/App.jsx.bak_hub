@@ -361,59 +361,24 @@ function useLocalStorage(key, initial) {
 }
 
 // ============================================================
-// COMPONENT: SmartImage — 言語別画像＋フォールバック
-// 探す順: {lang}/{id}.png → ru/{id}.png → 絵文字プレースホルダ
-// ============================================================
-function SmartImage({ wordId, langCode, meaning, dark }) {
-  // 試行するパスの候補（優先順）
-  const candidates = useMemo(() => {
-    const list = [`/images/${langCode}/${wordId}.png`];
-    if (langCode !== 'ru') list.push(`/images/ru/${wordId}.png`); // ロシア語版にフォールバック
-    return list;
-  }, [wordId, langCode]);
-
-  const [srcIdx, setSrcIdx] = useState(0);
-  const [failed, setFailed] = useState(false);
-
-  // wordId/langが変わったらリセット
-  useEffect(() => { setSrcIdx(0); setFailed(false); }, [wordId, langCode]);
-
-  if (failed || srcIdx >= candidates.length) {
-    // 全部失敗 → 絵文字プレースホルダ
-    return (
-      <div className="word-image-placeholder">
-        <Sparkles size={48} strokeWidth={1.2} />
-        <div className="placeholder-text">{meaning.split(/[\/\s,]/)[0]}</div>
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={candidates[srcIdx]}
-      alt={meaning}
-      className="word-image"
-      onError={() => {
-        // 次の候補へ。全部尽きたらfailed
-        if (srcIdx + 1 < candidates.length) setSrcIdx(srcIdx + 1);
-        else setFailed(true);
-      }}
-    />
-  );
-}
-
-// ============================================================
 // COMPONENT: WordCard — main card showing one word
 // ============================================================
 function WordCard({ word, dayEntry, onSpeak, isLearned, isNotYet, isBookmarked,
-                   onMarkLearned, onMarkNotYet, onToggleBookmark, dark, langCode }) {
+                   onMarkLearned, onMarkNotYet, onToggleBookmark, dark }) {
   const [hidden, setHidden] = useState(false);
 
   return (
     <div className={`word-card-inner ${dark ? 'dark' : ''}`}>
       {/* Image / Visual */}
       <div className="word-image-area">
-        <SmartImage wordId={word.id} langCode={langCode} meaning={word.meaning} dark={dark} />
+        {word.image ? (
+          <img src={word.image} alt={word.meaning} className="word-image" />
+        ) : (
+          <div className="word-image-placeholder">
+            <Sparkles size={48} strokeWidth={1.2} />
+            <div className="placeholder-text">{word.meaning.split(/[\/\s,]/)[0]}</div>
+          </div>
+        )}
       </div>
 
       {/* Russian word */}
@@ -514,7 +479,7 @@ function WordCard({ word, dayEntry, onSpeak, isLearned, isNotYet, isBookmarked,
 // COMPONENT: DayCard — wraps one day (may have 1+ words)
 // ============================================================
 function DayCard({ dayEntry, onSpeak, learned, notYet, bookmarked,
-                  onMarkLearned, onMarkNotYet, onToggleBookmark, dark, langCode }) {
+                  onMarkLearned, onMarkNotYet, onToggleBookmark, dark }) {
   const [wordIdx, setWordIdx] = useState(0);
 
   // reset when day changes
@@ -572,7 +537,6 @@ function DayCard({ dayEntry, onSpeak, learned, notYet, bookmarked,
         onMarkNotYet={onMarkNotYet}
         onToggleBookmark={onToggleBookmark}
         dark={dark}
-        langCode={langCode}
       />
 
       {/* Tip — LARGER */}
@@ -1617,7 +1581,6 @@ export default function App() {
               onMarkNotYet={markNotYet}
               onToggleBookmark={toggleBookmark}
               dark={dark}
-              langCode={langCode}
             />
           </div>
 

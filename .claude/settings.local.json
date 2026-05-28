@@ -25,7 +25,12 @@
       "Bash(cp \"C:\\\\Users\\\\yayoi\\\\Downloads\\\\ko.json\" src/data/ko.json)",
       "Bash(cp \"C:\\\\Users\\\\yayoi\\\\Downloads\\\\zh.json\" src/data/zh.json)",
       "Bash(cp \"C:\\\\Users\\\\yayoi\\\\Downloads\\\\en.json\" src/data/en.json)",
-      "Bash(git commit -m 'Language hub: multi-language support \\(RU full, KO 50 days\\) *)"
+      "Bash(git commit -m 'Language hub: multi-language support \\(RU full, KO 50 days\\) *)",
+      "Bash(cp src/App.jsx src/App.jsx.bak_hub)",
+      "Bash(mkdir -p public/images/ru public/images/ko public/images/zh public/images/en)",
+      "Bash(mv public/images/*.png public/images/ru/)",
+      "Bash(touch public/images/ko/.gitkeep public/images/zh/.gitkeep public/images/en/.gitkeep)",
+      "Bash(git commit -m 'Fix tips per language + language-specific image system *)"
     ]
   }
 }
