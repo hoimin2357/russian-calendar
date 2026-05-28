@@ -198,7 +198,7 @@
         "sentence_en": "Everything is good.",
         "notes": "The standard 'I'm fine' answer.",
         "image_prompt": "a smiling sun shining over a peaceful garden with flowers",
-        "image": null
+        "image": "/images/11.png"
       }
     ]
   },
@@ -221,7 +221,7 @@
         "sentence_en": "I am from Japan.",
         "notes": "Russian's 'I' — just one letter.",
         "image_prompt": "a child pointing to themselves with a proud smile",
-        "image": null
+        "image": "/images/12.png"
       },
       {
         "id": 13,
@@ -234,7 +234,7 @@
         "sentence_en": "Are you home?",
         "notes": "Use with friends, family, children only.",
         "image_prompt": "two close friends sitting on a sofa talking warmly",
-        "image": null
+        "image": "/images/13.png"
       },
       {
         "id": 14,
@@ -247,7 +247,7 @@
         "sentence_en": "Do you speak English?",
         "notes": "Polite singular OR plural. Default for adults you don't know.",
         "image_prompt": "a young person respectfully addressing an elderly teacher",
-        "image": null
+        "image": "/images/14.png"
       }
     ]
   },
@@ -270,7 +270,7 @@
         "sentence_en": "He is my brother.",
         "notes": "Also used for masculine inanimate nouns ('it').",
         "image_prompt": "a young man waving from across a street with a friendly smile",
-        "image": null
+        "image": "/images/15.png"
       },
       {
         "id": 16,
@@ -283,7 +283,7 @@
         "sentence_en": "She is a teacher.",
         "notes": "Unstressed 'о' sounds like 'a'.",
         "image_prompt": "a kind woman with a warm smile holding an open book",
-        "image": null
+        "image": "/images/16.png"
       },
       {
         "id": 17,
@@ -296,7 +296,7 @@
         "sentence_en": "We are friends.",
         "notes": "No verb 'to be' in present tense.",
         "image_prompt": "a group of four friends linking arms and laughing together",
-        "image": null
+        "image": "/images/17.png"
       },
       {
         "id": 18,
@@ -309,7 +309,7 @@
         "sentence_en": "They are students.",
         "notes": "Used for all genders in plural.",
         "image_prompt": "a small crowd of diverse students walking together with backpacks",
-        "image": null
+        "image": "/images/18.png"
       }
     ]
   },
@@ -332,7 +332,7 @@
         "sentence_en": "This is my house.",
         "notes": "Feminine: моя. Neuter: моё. Plural: мои.",
         "image_prompt": "a hand gently holding a small house, claiming it as home",
-        "image": null
+        "image": "/images/19.png"
       },
       {
         "id": 20,
@@ -345,7 +345,7 @@
         "sentence_en": "Is this your phone?",
         "notes": "Used with 'ты'. Formal: ваш.",
         "image_prompt": "two hands exchanging a smartphone with a thoughtful gesture",
-        "image": null
+        "image": "/images/20.png"
       }
     ]
   },
@@ -368,7 +368,7 @@
         "sentence_en": "My mom is a doctor.",
         "notes": "Endearing. 'Мать' is more formal.",
         "image_prompt": "a loving mother hugging her child in a sunny kitchen",
-        "image": null
+        "image": "/images/21.png"
       },
       {
         "id": 22,
@@ -381,7 +381,7 @@
         "sentence_en": "Dad is at home.",
         "notes": "Endearing. 'Отец' is more formal.",
         "image_prompt": "a father reading a bedtime story to his child",
-        "image": null
+        "image": "/images/22.png"
       }
     ]
   },
@@ -404,7 +404,7 @@
         "sentence_en": "I have a big family.",
         "notes": "Soft 'мь' before 'я'.",
         "image_prompt": "a large family of three generations gathered around a dinner table",
-        "image": null
+        "image": "/images/23.png"
       },
       {
         "id": 24,
@@ -417,7 +417,7 @@
         "sentence_en": "This is my brother.",
         "notes": "Plural: братья.",
         "image_prompt": "two brothers playing with toy cars on the floor",
-        "image": null
+        "image": "/images/24.png"
       },
       {
         "id": 25,
@@ -430,7 +430,7 @@
         "sentence_en": "My sister is in Moscow.",
         "notes": "Plural: сёстры.",
         "image_prompt": "two sisters sharing a colorful umbrella under gentle rain",
-        "image": null
+        "image": "/images/25.png"
       }
     ]
   },
@@ -453,7 +453,7 @@
         "sentence_en": "My grandma bakes pies.",
         "notes": "Famous in Russian culture as the cozy keeper of traditions.",
         "image_prompt": "a kind grandmother in a flowered apron baking pies in a cozy kitchen",
-        "image": null
+        "image": "/images/26.png"
       },
       {
         "id": 27,
@@ -466,7 +466,7 @@
         "sentence_en": "Grandpa loves fishing.",
         "notes": "Often pictured with a white beard, telling stories.",
         "image_prompt": "a wise grandfather with a gentle smile holding a fishing rod by a lake",
-        "image": null
+        "image": "/images/27.png"
       }
     ]
   },
@@ -489,7 +489,7 @@
         "sentence_en": "He is my best friend.",
         "notes": "Final 'г' devoiced to 'k'.",
         "image_prompt": "two male friends sharing a meal at a casual cafe table",
-        "image": null
+        "image": "/images/28.png"
       },
       {
         "id": 29,
@@ -502,7 +502,7 @@
         "sentence_en": "My (girl)friend is smart.",
         "notes": "Not romantic — just a female friend.",
         "image_prompt": "two female friends laughing together while walking with shopping bags",
-        "image": null
+        "image": "/images/29.png"
       }
     ]
   },
@@ -525,7 +525,7 @@
         "sentence_en": "My house is small.",
         "notes": "Also means 'home' as a concept.",
         "image_prompt": "a cozy wooden house with smoke rising from the chimney on a winter evening",
-        "image": null
+        "image": "/images/30.png"
       },
       {
         "id": 31,
@@ -538,7 +538,7 @@
         "sentence_en": "I have a new apartment.",
         "notes": "Most urban Russians live in apartments, not houses.",
         "image_prompt": "a bright modern apartment with plants and warm sunlight",
-        "image": null
+        "image": "/images/31.png"
       }
     ]
   },
@@ -561,7 +561,7 @@
         "sentence_en": "This is my room.",
         "notes": "Generic 'room'.",
         "image_prompt": "a sunny child's bedroom with toys and a small bookshelf",
-        "image": null
+        "image": "/images/32.png"
       },
       {
         "id": 33,
@@ -574,7 +574,7 @@
         "sentence_en": "We drink tea in the kitchen.",
         "notes": "Cultural heart of Russian homes.",
         "image_prompt": "a warm rustic kitchen with a steaming kettle and bread on the table",
-        "image": null
+        "image": "/images/33.png"
       }
     ]
   },
@@ -597,7 +597,7 @@
         "sentence_en": "The window is open.",
         "notes": "Neuter nouns typically end in -о or -е.",
         "image_prompt": "an open window with curtains gently fluttering, view of a garden outside",
-        "image": null
+        "image": "/images/34.png"
       },
       {
         "id": 35,
@@ -610,7 +610,7 @@
         "sentence_en": "The door is closed.",
         "notes": "Soft sign at end → feminine.",
         "image_prompt": "an old wooden door with a heart-shaped knocker, slightly ajar",
-        "image": null
+        "image": "/images/35.png"
       }
     ]
   },
@@ -633,7 +633,7 @@
         "sentence_en": "The book is on the table.",
         "notes": "Try also: стул (chair).",
         "image_prompt": "a wooden table with a vase of wildflowers and an open book",
-        "image": null
+        "image": "/images/36.png"
       },
       {
         "id": 37,
@@ -646,7 +646,7 @@
         "sentence_en": "Sit on the chair.",
         "notes": "Don't confuse with English 'stool' — this is any chair.",
         "image_prompt": "a comfortable wooden chair with a soft cushion by a sunny window",
-        "image": null
+        "image": "/images/37.png"
       }
     ]
   },
@@ -669,7 +669,7 @@
         "sentence_en": "This book is interesting.",
         "notes": "Russians love books deeply.",
         "image_prompt": "an open antique book with golden pages and a feather quill beside it",
-        "image": null
+        "image": "/images/38.png"
       },
       {
         "id": 39,
@@ -682,7 +682,7 @@
         "sentence_en": "Where is my pen?",
         "notes": "Also means 'handle' (of a door).",
         "image_prompt": "a beautiful blue fountain pen resting on a handwritten letter",
-        "image": null
+        "image": "/images/39.png"
       }
     ]
   },
@@ -705,7 +705,7 @@
         "sentence_en": "My phone is new.",
         "notes": "Cognate — easy to remember.",
         "image_prompt": "a modern smartphone resting on a wooden table with a coffee cup",
-        "image": null
+        "image": "/images/40.png"
       },
       {
         "id": 41,
@@ -718,7 +718,7 @@
         "sentence_en": "I work at the computer.",
         "notes": "Almost identical to English.",
         "image_prompt": "a vintage laptop computer open on a cozy desk with a steaming mug",
-        "image": null
+        "image": "/images/41.png"
       }
     ]
   },
@@ -741,7 +741,7 @@
         "sentence_en": "Can I have some water?",
         "notes": "Stress shifts in different cases.",
         "image_prompt": "a clear glass of water with water droplets, set on a wooden table",
-        "image": null
+        "image": "/images/42.png"
       },
       {
         "id": 43,
@@ -754,7 +754,7 @@
         "sentence_en": "Fresh bread is delicious.",
         "notes": "Final 'б' devoiced to 'p'.",
         "image_prompt": "a fresh round loaf of dark Russian bread sliced on a wooden board",
-        "image": null
+        "image": "/images/43.png"
       }
     ]
   },
@@ -777,7 +777,7 @@
         "sentence_en": "Hot tea in winter.",
         "notes": "Russia's most beloved drink.",
         "image_prompt": "a traditional Russian samovar with a steaming glass cup of tea",
-        "image": null
+        "image": "/images/44.png"
       },
       {
         "id": 45,
@@ -790,7 +790,7 @@
         "sentence_en": "Tea with sugar.",
         "notes": "Often added by the cube, traditionally.",
         "image_prompt": "a small bowl of white sugar cubes beside a teacup",
-        "image": null
+        "image": "/images/45.png"
       }
     ]
   },
@@ -813,7 +813,7 @@
         "sentence_en": "Black coffee, please.",
         "notes": "Indeclinable — never changes form.",
         "image_prompt": "a steaming cup of dark coffee with rising vapor on a cafe table",
-        "image": null
+        "image": "/images/46.png"
       },
       {
         "id": 47,
@@ -826,7 +826,7 @@
         "sentence_en": "I love milk.",
         "notes": "Three unstressed 'о's all sound different.",
         "image_prompt": "a glass bottle of fresh milk beside a small jug, soft morning light",
-        "image": null
+        "image": "/images/47.png"
       }
     ]
   },
@@ -849,7 +849,7 @@
         "sentence_en": "A red apple.",
         "notes": "Plural: яблоки.",
         "image_prompt": "a glossy red apple with a green leaf on a white plate",
-        "image": null
+        "image": "/images/48.png"
       },
       {
         "id": 49,
@@ -862,7 +862,7 @@
         "sentence_en": "A yellow banana.",
         "notes": "International word.",
         "image_prompt": "a bunch of three ripe yellow bananas with a leaf",
-        "image": null
+        "image": "/images/49.png"
       }
     ]
   },
@@ -885,7 +885,7 @@
         "sentence_en": "Meat or fish?",
         "notes": "General term.",
         "image_prompt": "a hearty plate of grilled meat with vegetables and herbs",
-        "image": null
+        "image": "/images/50.png"
       },
       {
         "id": 51,
@@ -898,7 +898,7 @@
         "sentence_en": "Fresh fish.",
         "notes": "Russia has rich fishing traditions.",
         "image_prompt": "a fresh whole fish on ice with lemon and dill garnish",
-        "image": null
+        "image": "/images/51.png"
       }
     ]
   },
@@ -921,7 +921,7 @@
         "sentence_en": "Hot soup.",
         "notes": "Borscht is a famous Russian суп.",
         "image_prompt": "a bowl of red borscht soup with a dollop of sour cream and dill",
-        "image": null
+        "image": "/images/52.png"
       },
       {
         "id": 53,
@@ -934,7 +934,7 @@
         "sentence_en": "A green salad.",
         "notes": "Olivier salad is a Russian classic.",
         "image_prompt": "a fresh garden salad with tomatoes and cucumbers in a wooden bowl",
-        "image": null
+        "image": "/images/53.png"
       }
     ]
   },
@@ -957,7 +957,7 @@
         "sentence_en": "A chocolate cake.",
         "notes": "Often elaborate, layered.",
         "image_prompt": "a slice of beautiful chocolate layer cake with berries on top",
-        "image": null
+        "image": "/images/54.png"
       },
       {
         "id": 55,
@@ -970,7 +970,7 @@
         "sentence_en": "Give me a candy.",
         "notes": "Russian chocolates are world-class.",
         "image_prompt": "a colorful pile of wrapped candies and chocolates in a tin",
-        "image": null
+        "image": "/images/55.png"
       }
     ]
   },
@@ -993,7 +993,7 @@
         "sentence_en": "I want to be a doctor.",
         "notes": "Omitted in present tense! 'Я студент' = 'I am a student'.",
         "image_prompt": "a person looking thoughtfully at their reflection in a mirror",
-        "image": null
+        "image": "/images/56.png"
       }
     ]
   },
@@ -1016,7 +1016,7 @@
         "sentence_en": "I live in Tokyo.",
         "notes": "Я живу, ты живёшь, он живёт.",
         "image_prompt": "a person opening curtains to a sunny morning, embracing a new day",
-        "image": null
+        "image": "/images/57.png"
       },
       {
         "id": 58,
@@ -1029,7 +1029,7 @@
         "sentence_en": "I have a cat.",
         "notes": "Russians don't have 'have' — they 'have by them'.",
         "image_prompt": "a smiling person holding a small kitten with love",
-        "image": null
+        "image": "/images/58.png"
       }
     ]
   },
@@ -1052,7 +1052,7 @@
         "sentence_en": "I'm going home.",
         "notes": "On foot, one direction.",
         "image_prompt": "a person walking down a quiet street with a backpack",
-        "image": null
+        "image": "/images/59.png"
       },
       {
         "id": 60,
@@ -1065,7 +1065,7 @@
         "sentence_en": "I'm going to Moscow.",
         "notes": "Always transport — car, train, bus.",
         "image_prompt": "a person looking out of a train window watching the countryside pass",
-        "image": null
+        "image": "/images/60.png"
       }
     ]
   },
@@ -1088,7 +1088,7 @@
         "sentence_en": "I'm reading a book.",
         "notes": "Я читаю, ты читаешь, он читает.",
         "image_prompt": "a person curled up in a cozy chair absorbed in reading a book",
-        "image": null
+        "image": "/images/61.png"
       },
       {
         "id": 62,
@@ -1101,7 +1101,7 @@
         "sentence_en": "I'm writing a letter.",
         "notes": "Я пишу, ты пишешь, он пишет.",
         "image_prompt": "a hand writing a letter with a fountain pen at a desk",
-        "image": null
+        "image": "/images/62.png"
       }
     ]
   },

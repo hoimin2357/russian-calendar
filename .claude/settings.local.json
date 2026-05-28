@@ -6,7 +6,10 @@
       "PowerShell(Get-CimInstance *)",
       "Bash(node -e ' *)",
       "Bash(git add *)",
-      "Bash(git commit -m 'Add images for days 1-10 *)"
+      "Bash(git commit -m 'Add images for days 1-10 *)",
+      "Bash(git push *)",
+      "Bash(git commit -m 'Update images *)",
+      "Bash(git commit -m 'Add images for days 1-30 \\(62 words\\) *)"
     ]
   }
 }
