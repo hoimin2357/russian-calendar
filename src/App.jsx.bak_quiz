@@ -146,86 +146,6 @@ const generateWeeklyQuiz = (allWords, todayISO, numQuestions = 10) => {
 const isSunday = (isoDate) => new Date(isoDate).getDay() === 0;
 
 // ============================================================
-// GAMIFICATION — XP / Level / Badges
-// ============================================================
-const XP_REWARDS = {
-  newWord: 5,
-  srsCorrect: 10,
-  quizCorrect: 10,
-  quizPerfect: 50,
-  mastered: 30,
-  dailyLogin: 20,
-};
-
-// レベル計算（Lv L までの累積XP = 100 * L*(L-1)/2）
-const xpForLevel = (level) => 100 * level * (level - 1) / 2;
-const levelFromXP = (xp) => {
-  let lv = 1;
-  while (xpForLevel(lv + 1) <= xp) lv++;
-  return lv;
-};
-const levelProgress = (xp) => {
-  const lv = levelFromXP(xp);
-  const curBase = xpForLevel(lv);
-  const nextBase = xpForLevel(lv + 1);
-  return {
-    level: lv,
-    current: xp - curBase,
-    needed: nextBase - curBase,
-    pct: Math.round(((xp - curBase) / (nextBase - curBase)) * 100),
-  };
-};
-
-// 称号（英語 + ロシア語）
-const TITLES = [
-  { min: 1, title: 'Beginner', ru: 'Новичок' },
-  { min: 5, title: 'Explorer', ru: 'Исследователь' },
-  { min: 10, title: 'Scholar', ru: 'Учёный' },
-  { min: 20, title: 'Expert', ru: 'Эксперт' },
-  { min: 35, title: 'Master', ru: 'Мастер' },
-  { min: 50, title: 'Sage', ru: 'Мудрец' },
-];
-const titleForLevel = (lv) => {
-  let t = TITLES[0];
-  for (const x of TITLES) if (lv >= x.min) t = x;
-  return t;
-};
-
-// バッジ定義（英語 + ロシア語）
-const BADGES = [
-  { id: 'first_word', name: 'First Steps', ru: 'Первые шаги', desc: 'Learn your first word', icon: '👣' },
-  { id: 'words_10', name: 'Getting Started', ru: 'Начало', desc: 'Learn 10 words', icon: '🌱' },
-  { id: 'words_50', name: 'Vocabulary Builder', ru: 'Словарный запас', desc: 'Learn 50 words', icon: '📚' },
-  { id: 'words_100', name: 'Century', ru: 'Сотня', desc: 'Learn 100 words', icon: '💯' },
-  { id: 'mastered_10', name: 'Memory Master', ru: 'Мастер памяти', desc: 'Master 10 words', icon: '🧠' },
-  { id: 'mastered_50', name: 'Fluency', ru: 'Беглость', desc: 'Master 50 words', icon: '🎓' },
-  { id: 'streak_3', name: 'Consistent', ru: 'Постоянство', desc: '3-day streak', icon: '🔥' },
-  { id: 'streak_7', name: 'Dedicated', ru: 'Преданность', desc: '7-day streak', icon: '⚡' },
-  { id: 'streak_30', name: 'Unstoppable', ru: 'Неудержимый', desc: '30-day streak', icon: '🏔️' },
-  { id: 'quiz_perfect', name: 'Perfectionist', ru: 'Перфекционист', desc: 'Get 100% on a quiz', icon: '🎯' },
-  { id: 'quiz_10', name: 'Quiz Champion', ru: 'Чемпион', desc: 'Complete 10 quizzes', icon: '🏆' },
-  { id: 'level_10', name: 'Rising Star', ru: 'Восходящая звезда', desc: 'Reach level 10', icon: '⭐' },
-];
-
-// 達成済みバッジを判定
-const computeUnlockedBadges = (g) => {
-  const u = [];
-  if (g.wordsLearned >= 1) u.push('first_word');
-  if (g.wordsLearned >= 10) u.push('words_10');
-  if (g.wordsLearned >= 50) u.push('words_50');
-  if (g.wordsLearned >= 100) u.push('words_100');
-  if (g.mastered >= 10) u.push('mastered_10');
-  if (g.mastered >= 50) u.push('mastered_50');
-  if (g.streak >= 3) u.push('streak_3');
-  if (g.streak >= 7) u.push('streak_7');
-  if (g.streak >= 30) u.push('streak_30');
-  if (g.quizPerfect) u.push('quiz_perfect');
-  if (g.quizCount >= 10) u.push('quiz_10');
-  if (g.level >= 10) u.push('level_10');
-  return u;
-};
-
-// ============================================================
 // CONSTANTS & HELPERS
 // ============================================================
 const STORAGE_KEYS = {
@@ -236,7 +156,6 @@ const STORAGE_KEYS = {
   THEME: 'rcal_theme',
   STREAK_DATA: 'rcal_streak',
   SRS: 'rcal_srs',
-  GAMIFICATION: 'rcal_gamification',
 };
 
 const getTodayISO = () => new Date().toISOString().split('T')[0];
@@ -588,7 +507,7 @@ function ReviewSession({ dueWords, srsData, onClose, onSpeak, onAnswer, dark }) 
             </div>
           ) : (
             <button className="flashcard-reveal" onClick={() => setRevealed(true)}>
-              <Eye size={20} /> Tap to reveal the answer
+              <Eye size={20} /> 思い出せたら、タップして答えを確認
             </button>
           )}
         </div>
@@ -598,13 +517,13 @@ function ReviewSession({ dueWords, srsData, onClose, onSpeak, onAnswer, dark }) 
           <div className="flashcard-answers">
             <button className="answer-btn wrong" onClick={() => handleAnswer(false)}>
               <RotateCcw size={20} />
-              <span>Forgot</span>
-              <small>review tomorrow</small>
+              <span>忘れた</span>
+              <small>明日また</small>
             </button>
             <button className="answer-btn correct" onClick={() => handleAnswer(true)}>
               <CheckCircle2 size={20} />
-              <span>I knew it</span>
-              <small>{entry ? `in ${SRS_INTERVALS[Math.min(entry.stage + 1, MAX_STAGE)]}d` : 'next'}</small>
+              <span>覚えてた</span>
+              <small>{entry ? `${SRS_INTERVALS[Math.min(entry.stage + 1, MAX_STAGE)]}日後` : '次へ'}</small>
             </button>
           </div>
         )}
@@ -617,7 +536,7 @@ function ReviewSession({ dueWords, srsData, onClose, onSpeak, onAnswer, dark }) 
 // COMPONENT: QuizSession — 日曜クイズ（4形式ミックス）
 // ============================================================
 function QuizSession({ allWords, onClose, onSpeak, onQuizComplete, dark }) {
-  const [questions, setQuestions] = useState(() => generateWeeklyQuiz(allWords, getTodayISO(), 10));
+  const [questions] = useState(() => generateWeeklyQuiz(allWords, getTodayISO(), 10));
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [answered, setAnswered] = useState(false);
@@ -626,33 +545,6 @@ function QuizSession({ allWords, onClose, onSpeak, onQuizComplete, dark }) {
   const [wrongWords, setWrongWords] = useState([]);
 
   const current = questions[idx];
-
-  // クイズをリセットして再挑戦
-  const handleRetry = () => {
-    setQuestions(generateWeeklyQuiz(allWords, getTodayISO(), 10));
-    setIdx(0);
-    setSelected(null);
-    setAnswered(false);
-    setScore(0);
-    setFinished(false);
-    setWrongWords([]);
-  };
-
-  // 間違えた単語だけ再挑戦
-  const handleRetryWrong = () => {
-    // 間違えた単語からクイズを作る
-    const pool = allWords.filter(w => w.day_date <= getTodayISO());
-    const retryQuestions = wrongWords.map((w, i) =>
-      makeQuestion(w, pool, QUIZ_TYPES[i % QUIZ_TYPES.length])
-    );
-    setQuestions(quizShuffle(retryQuestions));
-    setIdx(0);
-    setSelected(null);
-    setAnswered(false);
-    setScore(0);
-    setFinished(false);
-    setWrongWords([]);
-  };
 
   // 聞き取り問題は自動で音声再生
   useEffect(() => {
@@ -680,11 +572,7 @@ function QuizSession({ allWords, onClose, onSpeak, onQuizComplete, dark }) {
       setAnswered(false);
     } else {
       setFinished(true);
-      // scoreは最新の状態を反映（setScoreは適用済みのはずだが念のため関数で取得）
-      setScore(finalScore => {
-        if (onQuizComplete) onQuizComplete(finalScore, questions.length);
-        return finalScore;
-      });
+      if (onQuizComplete) onQuizComplete(score, questions.length);
     }
   };
 
@@ -744,17 +632,7 @@ function QuizSession({ allWords, onClose, onSpeak, onQuizComplete, dark }) {
             </div>
           )}
 
-          <div className="quiz-result-buttons">
-            {wrongWords.length > 0 && (
-              <button className="quiz-retry-wrong-btn" onClick={handleRetryWrong}>
-                <RotateCcw size={18} /> Retry missed ({wrongWords.length})
-              </button>
-            )}
-            <button className="quiz-retry-btn" onClick={handleRetry}>
-              <RefreshCw size={18} /> New quiz
-            </button>
-            <button className="quiz-done-btn" onClick={onClose}>Done</button>
-          </div>
+          <button className="quiz-done-btn" onClick={onClose}>Done</button>
         </div>
       </div>
     );
@@ -762,10 +640,10 @@ function QuizSession({ allWords, onClose, onSpeak, onQuizComplete, dark }) {
 
   // 問題タイプのラベル
   const typeLabels = {
-    ru_to_meaning: 'Choose the meaning',
-    meaning_to_ru: 'Choose the Russian',
-    listening: 'Listening',
-    cloze: 'Fill in the blank',
+    ru_to_meaning: '意味を選ぶ',
+    meaning_to_ru: 'ロシア語を選ぶ',
+    listening: '聞き取り',
+    cloze: '穴埋め',
   };
 
   return (
@@ -788,7 +666,7 @@ function QuizSession({ allWords, onClose, onSpeak, onQuizComplete, dark }) {
           {current.type === 'listening' ? (
             <button className="quiz-audio-btn" onClick={() => onSpeak(current.audio)}>
               <Volume2 size={48} />
-              <span>Tap to play</span>
+              <span>タップで再生</span>
             </button>
           ) : (
             <h1 className={`quiz-q-text ${current.type === 'cloze' ? 'cloze' : ''}`}>
@@ -1010,16 +888,6 @@ export default function App() {
   const [dark, setDark] = useLocalStorage(STORAGE_KEYS.THEME, false);
   const [lastVisit, setLastVisit] = useLocalStorage(STORAGE_KEYS.LAST_VISIT, null);
   const [srsData, setSrsData] = useLocalStorage(STORAGE_KEYS.SRS, {});
-  const [gamif, setGamif] = useLocalStorage(STORAGE_KEYS.GAMIFICATION, {
-    xp: 0,
-    streak: 0,
-    lastStreakDate: null,
-    quizCount: 0,
-    quizPerfect: false,
-    seenBadges: [], // 既に通知したバッジ（新規解除の検出用）
-  });
-  const [levelUpNotice, setLevelUpNotice] = useState(null); // レベルアップ通知
-  const [newBadge, setNewBadge] = useState(null); // 新バッジ通知
 
   const [view, setView] = useState('main'); // 'main' | 'review' | 'manual' | 'index' | 'stats'
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1051,18 +919,6 @@ export default function App() {
     })));
   }, []);
 
-  // ─── Gamification: XP加算（先に定義：他のeffectから参照されるため）─
-  const addXP = useCallback((amount) => {
-    setGamif(prev => {
-      const before = levelFromXP(prev.xp);
-      const after = levelFromXP(prev.xp + amount);
-      if (after > before) {
-        setTimeout(() => setLevelUpNotice({ level: after, title: titleForLevel(after) }), 100);
-      }
-      return { ...prev, xp: prev.xp + amount };
-    });
-  }, [setGamif]);
-
   // ─── SRS: 表示中の日の単語を自動登録 ───────────────────────
   // 今日（カレンダー上の今日）以前の日を開いたら、その単語をSRSに登録
   useEffect(() => {
@@ -1071,22 +927,17 @@ export default function App() {
     if (dayEntry.date > today) return;
 
     setSrsData(prev => {
-      let newCount = 0;
+      let changed = false;
       const next = { ...prev };
       for (const w of dayEntry.words) {
         if (!next[w.id]) {
           next[w.id] = createSrsEntry(today);
-          newCount++;
+          changed = true;
         }
       }
-      if (newCount > 0) {
-        // 新しい単語を見たXP
-        setTimeout(() => addXP(XP_REWARDS.newWord * newCount), 150);
-        return next;
-      }
-      return prev;
+      return changed ? next : prev;
     });
-  }, [dayEntry, setSrsData, addXP]);
+  }, [dayEntry, setSrsData]);
 
   // ─── SRS: 今日復習すべき単語 ───────────────────────────────
   const dueWords = useMemo(() => {
@@ -1099,32 +950,12 @@ export default function App() {
     const today = getTodayISO();
     setSrsData(prev => {
       const entry = prev[wordId] || createSrsEntry(today);
-      const wasMastered = entry.mastered;
       const updated = remembered
         ? promoteEntry(entry, today)
         : demoteEntry(entry, today);
-      // XP付与
-      if (remembered) {
-        let xp = XP_REWARDS.srsCorrect;
-        if (updated.mastered && !wasMastered) xp += XP_REWARDS.mastered; // 新規習得ボーナス
-        setTimeout(() => addXP(xp), 100);
-      }
       return { ...prev, [wordId]: updated };
     });
-  }, [setSrsData, addXP]);
-
-  // ─── Quiz: 完了時の処理（XP・統計更新）─────────────────────
-  const handleQuizComplete = useCallback((score, total) => {
-    const isPerfect = score === total && total > 0;
-    let xp = score * XP_REWARDS.quizCorrect;
-    if (isPerfect) xp += XP_REWARDS.quizPerfect;
-    addXP(xp);
-    setGamif(prev => ({
-      ...prev,
-      quizCount: prev.quizCount + 1,
-      quizPerfect: prev.quizPerfect || isPerfect,
-    }));
-  }, [addXP, setGamif]);
+  }, [setSrsData]);
 
   // ─── SRS: 統計 ─────────────────────────────────────────────
   const srsStats = useMemo(() => {
@@ -1137,54 +968,6 @@ export default function App() {
       learning: entries.filter(e => !e.mastered).length,
     };
   }, [srsData]);
-
-  // ─── Gamification: 派生値 ──────────────────────────────────
-  const gamifStats = useMemo(() => {
-    const prog = levelProgress(gamif.xp);
-    const title = titleForLevel(prog.level);
-    const badgeStats = {
-      wordsLearned: srsStats.total,
-      mastered: srsStats.mastered,
-      streak: gamif.streak,
-      quizPerfect: gamif.quizPerfect,
-      quizCount: gamif.quizCount,
-      level: prog.level,
-    };
-    const unlocked = computeUnlockedBadges(badgeStats);
-    return { ...prog, title, unlocked };
-  }, [gamif, srsStats]);
-
-  // ─── Gamification: デイリーログイン & streak ───────────────
-  useEffect(() => {
-    const today = getTodayISO();
-    setGamif(prev => {
-      if (prev.lastStreakDate === today) return prev; // 既に今日ログイン済み
-      // 連続判定
-      const yesterday = srsAddDays(today, -1);
-      let newStreak;
-      if (prev.lastStreakDate === yesterday) newStreak = prev.streak + 1;
-      else if (prev.lastStreakDate === null) newStreak = 1;
-      else newStreak = 1; // 途切れた
-      // ログインボーナス
-      setTimeout(() => addXP(XP_REWARDS.dailyLogin), 200);
-      return { ...prev, streak: newStreak, lastStreakDate: today };
-    });
-  }, []); // 初回マウントのみ
-
-  // ─── Gamification: 新バッジ検出 ───────────────────────────
-  useEffect(() => {
-    const unlocked = gamifStats.unlocked;
-    const newOnes = unlocked.filter(id => !gamif.seenBadges.includes(id));
-    if (newOnes.length > 0) {
-      // 最初の新バッジを通知
-      const badge = BADGES.find(b => b.id === newOnes[0]);
-      setNewBadge(badge);
-      setGamif(prev => ({
-        ...prev,
-        seenBadges: [...new Set([...prev.seenBadges, ...unlocked])],
-      }));
-    }
-  }, [gamifStats.unlocked]);
 
   // ─── Speech ───────────────────────────────────────────────
   const speak = useCallback((text) => {
@@ -1282,21 +1065,6 @@ export default function App() {
         </button>
       </div>
 
-      {/* ─── XP Bar (always visible) ─── */}
-      <div className="xp-bar-container" onClick={() => { setView('achievements'); setMenuOpen(false); }}>
-        <div className="xp-level-badge">
-          <Trophy size={14} />
-          <span>Lv {gamifStats.level}</span>
-        </div>
-        <div className="xp-bar-track">
-          <div className="xp-bar-fill" style={{ width: `${gamifStats.pct}%` }}></div>
-          <span className="xp-bar-label">{gamifStats.title.title} · {gamif.xp} XP</span>
-        </div>
-        {gamif.streak > 0 && (
-          <div className="xp-streak">🔥 {gamif.streak}</div>
-        )}
-      </div>
-
       {/* ─── Side Menu ─── */}
       {menuOpen && (
         <div className="side-menu" onClick={() => setMenuOpen(false)}>
@@ -1311,10 +1079,6 @@ export default function App() {
             <button onClick={() => { setView('quiz'); setMenuOpen(false); }}>
               <Target size={18} /> Sunday Quiz
               {isSunday(getTodayISO()) && <span className="badge badge-quiz">today!</span>}
-            </button>
-            <button onClick={() => { setView('achievements'); setMenuOpen(false); }}>
-              <Trophy size={18} /> Achievements
-              {gamifStats.unlocked.length > 0 && <span className="badge badge-quiz">{gamifStats.unlocked.length}</span>}
             </button>
             <button onClick={() => { setView('review'); setMenuOpen(false); }}>
               <AlertCircle size={18} /> Need Review
@@ -1427,73 +1191,8 @@ export default function App() {
           allWords={allWords}
           onClose={() => setView('main')}
           onSpeak={speak}
-          onQuizComplete={handleQuizComplete}
           dark={dark}
         />
-      )}
-
-      {/* ─── Achievements view ─── */}
-      {view === 'achievements' && (
-        <div className={`view-overlay ${dark ? 'dark' : ''}`}>
-          <div className="view-header">
-            <h2><Trophy size={22} /> Achievements</h2>
-            <button className="close-btn" onClick={() => setView('main')}><X size={22} /></button>
-          </div>
-          <div className="achievements-content">
-            {/* レベルカード */}
-            <div className="level-card">
-              <div className="level-card-top">
-                <div className="level-big">
-                  <Trophy size={28} />
-                  <span>Level {gamifStats.level}</span>
-                </div>
-                <div className="level-title">
-                  {gamifStats.title.title}
-                  <span className="level-title-ru">{gamifStats.title.ru}</span>
-                </div>
-              </div>
-              <div className="level-xp-track">
-                <div className="level-xp-fill" style={{ width: `${gamifStats.pct}%` }}></div>
-              </div>
-              <div className="level-xp-text">
-                {gamifStats.current} / {gamifStats.needed} XP to Level {gamifStats.level + 1}
-              </div>
-              <div className="level-total-xp">{gamif.xp} total XP</div>
-            </div>
-
-            {/* streak + クイズ統計 */}
-            <div className="achieve-mini-grid">
-              <div className="achieve-mini">
-                <div className="achieve-mini-num">🔥 {gamif.streak}</div>
-                <div className="achieve-mini-lbl">Day Streak</div>
-              </div>
-              <div className="achieve-mini">
-                <div className="achieve-mini-num">🎯 {gamif.quizCount}</div>
-                <div className="achieve-mini-lbl">Quizzes Done</div>
-              </div>
-              <div className="achieve-mini">
-                <div className="achieve-mini-num">🏆 {srsStats.mastered}</div>
-                <div className="achieve-mini-lbl">Words Mastered</div>
-              </div>
-            </div>
-
-            {/* バッジ一覧 */}
-            <h3 className="badges-title">Badges ({gamifStats.unlocked.length} / {BADGES.length})</h3>
-            <div className="badges-grid">
-              {BADGES.map(badge => {
-                const isUnlocked = gamifStats.unlocked.includes(badge.id);
-                return (
-                  <div key={badge.id} className={`badge-item ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                    <div className="badge-icon">{isUnlocked ? badge.icon : '🔒'}</div>
-                    <div className="badge-name">{badge.name}</div>
-                    <div className="badge-name-ru">{badge.ru}</div>
-                    <div className="badge-desc">{badge.desc}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       )}
 
       {/* ─── Review view ─── */}
@@ -1593,39 +1292,6 @@ export default function App() {
           <button className="today-btn" onClick={goToday}>
             <Calendar size={14} /> Today
           </button>
-        </div>
-      )}
-
-      {/* ─── Level-up notification ─── */}
-      {levelUpNotice && (
-        <div className="toast-overlay" onClick={() => setLevelUpNotice(null)}>
-          <div className="toast-card levelup" onClick={(e) => e.stopPropagation()}>
-            <div className="toast-icon">🎉</div>
-            <div className="toast-title">Level Up!</div>
-            <div className="toast-level">Level {levelUpNotice.level}</div>
-            <div className="toast-subtitle">
-              {levelUpNotice.title.title} · {levelUpNotice.title.ru}
-            </div>
-            <button className="toast-btn" onClick={() => setLevelUpNotice(null)}>
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── New badge notification ─── */}
-      {newBadge && (
-        <div className="toast-overlay" onClick={() => setNewBadge(null)}>
-          <div className="toast-card badge-toast" onClick={(e) => e.stopPropagation()}>
-            <div className="toast-icon">{newBadge.icon}</div>
-            <div className="toast-title">Badge Unlocked!</div>
-            <div className="toast-level">{newBadge.name}</div>
-            <div className="toast-subtitle">{newBadge.ru}</div>
-            <div className="toast-desc">{newBadge.desc}</div>
-            <button className="toast-btn" onClick={() => setNewBadge(null)}>
-              Awesome!
-            </button>
-          </div>
         </div>
       )}
     </div>
@@ -2404,179 +2070,6 @@ const styles = `
 }
 .dark .quiz-done-btn { background: #d4a574; color: #25201b; }
 
-/* ─── Quiz: retry buttons ─── */
-.quiz-result-buttons {
-  display: flex; flex-direction: column; gap: 10px;
-  width: 100%; margin-top: 16px;
-}
-.quiz-retry-wrong-btn {
-  background: rgba(192, 57, 43, 0.1); border: 2px solid #c0392b;
-  color: #c0392b; padding: 14px; border-radius: 12px; cursor: pointer;
-  font-size: 15px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.quiz-retry-wrong-btn:hover { background: #c0392b; color: #fff; }
-.quiz-retry-btn {
-  background: rgba(74, 124, 74, 0.1); border: 2px solid #4a7c4a;
-  color: #4a7c4a; padding: 14px; border-radius: 12px; cursor: pointer;
-  font-size: 15px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-}
-.quiz-retry-btn:hover { background: #4a7c4a; color: #fff; }
-
-/* ─── XP Bar (always visible) ─── */
-.xp-bar-container {
-  display: flex; align-items: center; gap: 10px;
-  max-width: 900px; margin: 0 auto; padding: 8px 16px;
-  cursor: pointer; border-bottom: 1px solid #d4c4a8;
-}
-.dark .xp-bar-container { border-bottom-color: #3a2f24; }
-.xp-level-badge {
-  display: flex; align-items: center; gap: 4px;
-  background: #8b2626; color: #fff; padding: 4px 10px;
-  border-radius: 12px; font-size: 12px; font-weight: 700;
-  flex-shrink: 0;
-}
-.dark .xp-level-badge { background: #d4a574; color: #25201b; }
-.xp-bar-track {
-  flex: 1; height: 20px; background: #e5d9c3; border-radius: 10px;
-  position: relative; overflow: hidden;
-}
-.dark .xp-bar-track { background: #3a2f24; }
-.xp-bar-fill {
-  height: 100%; background: linear-gradient(90deg, #c9a45a, #8b2626);
-  transition: width 0.5s ease; border-radius: 10px;
-}
-.dark .xp-bar-fill { background: linear-gradient(90deg, #d4a574, #c9a45a); }
-.xp-bar-label {
-  position: absolute; inset: 0; display: flex; align-items: center;
-  justify-content: center; font-size: 11px; font-weight: 600;
-  color: #3c1e0a; white-space: nowrap;
-}
-.dark .xp-bar-label { color: #e8dcc6; }
-.xp-streak {
-  font-size: 13px; font-weight: 700; flex-shrink: 0;
-}
-
-/* ─── Achievements page ─── */
-.achievements-content {
-  max-width: 640px; margin: 0 auto; padding: 20px 16px;
-}
-.level-card {
-  background: linear-gradient(135deg, #8b2626, #6b1818);
-  color: #fff; border-radius: 16px; padding: 24px;
-  margin-bottom: 20px;
-}
-.dark .level-card { background: linear-gradient(135deg, #d4a574, #b08654); color: #25201b; }
-.level-card-top {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 16px;
-}
-.level-big {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 24px; font-weight: 700; font-family: 'Old Standard TT', serif;
-}
-.level-title {
-  text-align: right; font-size: 18px; font-weight: 600;
-  display: flex; flex-direction: column;
-}
-.level-title-ru { font-size: 13px; opacity: 0.8; font-style: italic; }
-.level-xp-track {
-  height: 12px; background: rgba(255,255,255,0.25);
-  border-radius: 6px; overflow: hidden; margin-bottom: 8px;
-}
-.dark .level-xp-track { background: rgba(0,0,0,0.15); }
-.level-xp-fill {
-  height: 100%; background: #fff; border-radius: 6px; transition: width 0.5s;
-}
-.dark .level-xp-fill { background: #25201b; }
-.level-xp-text { font-size: 13px; opacity: 0.9; }
-.level-total-xp { font-size: 12px; opacity: 0.7; margin-top: 4px; }
-
-.achieve-mini-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-  margin-bottom: 24px;
-}
-.achieve-mini {
-  background: #faf6ee; border: 1px solid #d4c4a8;
-  border-radius: 12px; padding: 16px; text-align: center;
-}
-.dark .achieve-mini { background: #25201b; border-color: #3a2f24; }
-.achieve-mini-num { font-size: 24px; font-weight: 700; }
-.achieve-mini-lbl { font-size: 11px; color: #6b5848; margin-top: 4px; }
-.dark .achieve-mini-lbl { color: #a89684; }
-
-.badges-title {
-  font-family: 'Old Standard TT', serif; font-size: 20px;
-  color: #8b2626; margin: 0 0 16px;
-}
-.dark .badges-title { color: #d4a574; }
-.badges-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
-}
-.badge-item {
-  border-radius: 12px; padding: 16px 12px; text-align: center;
-  border: 1px solid #d4c4a8; transition: transform 0.15s;
-}
-.dark .badge-item { border-color: #3a2f24; }
-.badge-item.unlocked {
-  background: #faf6ee;
-}
-.dark .badge-item.unlocked { background: #25201b; }
-.badge-item.unlocked:hover { transform: translateY(-3px); }
-.badge-item.locked {
-  background: rgba(0,0,0,0.03); opacity: 0.55;
-}
-.dark .badge-item.locked { background: rgba(255,255,255,0.03); }
-.badge-icon { font-size: 36px; margin-bottom: 8px; }
-.badge-name { font-size: 13px; font-weight: 700; }
-.badge-name-ru { font-size: 11px; color: #8b6b48; font-style: italic; margin-bottom: 6px; }
-.dark .badge-name-ru { color: #c9a45a; }
-.badge-desc { font-size: 11px; color: #6b5848; line-height: 1.4; }
-.dark .badge-desc { color: #a89684; }
-
-/* ─── Toast notifications (level up / badge) ─── */
-.toast-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-  z-index: 300; display: flex; align-items: center; justify-content: center;
-  animation: fadeIn 0.2s ease; padding: 20px;
-}
-.toast-card {
-  background: #faf6ee; border-radius: 20px; padding: 32px 28px;
-  text-align: center; max-width: 340px; width: 100%;
-  animation: toastPop 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-  box-shadow: 0 12px 48px rgba(0,0,0,0.3);
-}
-.dark .toast-card { background: #25201b; }
-.toast-card.levelup { border: 3px solid #c9a45a; }
-.toast-card.badge-toast { border: 3px solid #8b2626; }
-.dark .toast-card.badge-toast { border-color: #d4a574; }
-.toast-icon { font-size: 64px; line-height: 1; margin-bottom: 12px; }
-.toast-title {
-  font-size: 14px; text-transform: uppercase; letter-spacing: 2px;
-  color: #8b6b48; font-weight: 700;
-}
-.dark .toast-title { color: #c9a45a; }
-.toast-level {
-  font-family: 'Old Standard TT', serif; font-size: 30px;
-  font-weight: 700; color: #8b2626; margin: 6px 0;
-}
-.dark .toast-level { color: #d4a574; }
-.toast-subtitle { font-size: 16px; font-weight: 600; }
-.toast-desc { font-size: 13px; color: #6b5848; margin-top: 8px; }
-.dark .toast-desc { color: #a89684; }
-.toast-btn {
-  margin-top: 20px; background: #8b2626; color: #fff; border: none;
-  padding: 12px 32px; border-radius: 20px; cursor: pointer;
-  font-size: 15px; font-weight: 600;
-}
-.dark .toast-btn { background: #d4a574; color: #25201b; }
-@keyframes toastPop {
-  from { transform: scale(0.7); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
 /* ─── Mobile ─── */
 @media (max-width: 600px) {
   .card-area { padding: 12px 8px; gap: 6px; }
@@ -2596,10 +2089,5 @@ const styles = `
   .quiz-q-text.cloze { font-size: 22px; }
   .quiz-option { font-size: 16px; padding: 14px; }
   .quiz-medal { font-size: 60px; }
-  .badges-grid { grid-template-columns: repeat(2, 1fr); }
-  .achieve-mini-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .achieve-mini { padding: 12px 6px; }
-  .achieve-mini-num { font-size: 18px; }
-  .xp-bar-label { font-size: 10px; }
 }
 `;
