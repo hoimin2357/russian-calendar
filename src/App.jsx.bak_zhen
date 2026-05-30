@@ -20,7 +20,7 @@ const LANGUAGES = [
   { code: 'ru', name: 'Russian',  native: 'Русский',  flag: '🇷🇺', tts: 'ru-RU', data: ruData },
   { code: 'ko', name: 'Korean',   native: '한국어',    flag: '🇰🇷', tts: 'ko-KR', data: koData },
   { code: 'zh', name: 'Chinese',  native: '中文',      flag: '🇨🇳', tts: 'zh-CN', data: zhData },
-  { code: 'en', name: 'English',  native: 'English',  flag: '🇬🇧', tts: 'en-GB', data: enData },
+  { code: 'en', name: 'English',  native: 'English',  flag: '🇬🇧', tts: 'en-US', data: enData },
 ];
 const getLanguage = (code) => LANGUAGES.find(l => l.code === code) || LANGUAGES[0];
 

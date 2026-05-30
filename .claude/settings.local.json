@@ -31,7 +31,8 @@
       "Bash(mv public/images/*.png public/images/ru/)",
       "Bash(touch public/images/ko/.gitkeep public/images/zh/.gitkeep public/images/en/.gitkeep)",
       "Bash(git commit -m 'Fix tips per language + language-specific image system *)",
-      "Bash(git commit -m 'Add Chinese and English data \\(50 days each\\) *)"
+      "Bash(git commit -m 'Add Chinese and English data \\(50 days each\\) *)",
+      "PowerShell(git *)"
     ]
   }
 }
