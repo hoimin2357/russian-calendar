@@ -139,11 +139,11 @@ const stringSimilarity = (a, b) => {
   return 1 - (dp[s1.length][s2.length] / maxLen);
 };
 
-// 判定: ◎完全 / ○近い / △違う（ネイティブ基準・辛口）
+// 判定: ◎完全 / ○近い / △違う
 const judgePronunciation = (target, heard) => {
   const sim = stringSimilarity(target, heard);
-  if (sim >= 1.0) return { grade: 'perfect', emoji: '🎉', label: 'Native-level!', sim };
-  if (sim >= 0.85) return { grade: 'close', emoji: '👍', label: 'Almost there!', sim };
+  if (sim >= 0.9) return { grade: 'perfect', emoji: '🎉', label: 'Perfect!', sim };
+  if (sim >= 0.6) return { grade: 'close', emoji: '👍', label: 'Close, try again!', sim };
   return { grade: 'try', emoji: '💪', label: 'Try once more!', sim };
 };
 
@@ -483,14 +483,18 @@ function PronunciationPractice({ word, ttsLang, onClose, onSpeak, dark }) {
     rec.lang = ttsLang;
     rec.continuous = false;
     rec.interimResults = false;
-    rec.maxAlternatives = 1; // 辛口モード：第一候補のみ（ネイティブ基準）
+    rec.maxAlternatives = 3;
 
     rec.onstart = () => setListening(true);
     rec.onresult = (event) => {
-      // 辛口モード：第一候補（最も信頼度の高い認識結果）だけで判定
-      const heardText = event.results[0][0].transcript;
-      setHeard(heardText);
-      setResult(judgePronunciation(target, heardText));
+      const alternatives = event.results[0];
+      let best = { text: alternatives[0].transcript, sim: 0 };
+      for (let i = 0; i < alternatives.length; i++) {
+        const sim = stringSimilarity(target, alternatives[i].transcript);
+        if (sim > best.sim) best = { text: alternatives[i].transcript, sim };
+      }
+      setHeard(best.text);
+      setResult(judgePronunciation(target, best.text));
       setAttempts(a => a + 1);
     };
     rec.onerror = (event) => {
@@ -570,18 +574,9 @@ function PronunciationPractice({ word, ttsLang, onClose, onSpeak, dark }) {
 
             {heard && (
               <div className="pron-result">
-                {/* Comparison: target vs heard */}
-                <div className="pron-compare">
-                  <div className="pron-compare-row">
-                    <div className="pron-compare-label">🎯 Target</div>
-                    <div className="pron-compare-text pron-compare-target">{target}</div>
-                  </div>
-                  <div className="pron-compare-row">
-                    <div className="pron-compare-label">🎤 You said</div>
-                    <div className={`pron-compare-text pron-compare-heard pron-compare-heard-${result?.grade || 'try'}`}>
-                      {heard}
-                    </div>
-                  </div>
+                <div className="pron-heard">
+                  <div className="pron-heard-label">You said:</div>
+                  <div className="pron-heard-text">{heard}</div>
                 </div>
                 {result && (
                   <div className={`pron-grade pron-grade-${result.grade}`}>
@@ -2516,7 +2511,7 @@ const styles = `
   background: #c9a45a; color: white;
 }
 
-.bookmark-row { display: flex; margin-top: 16px; }
+.bookmark-row { display: flex; }
 .bookmark-btn {
   background: none; border: 1px solid #c9a45a; color: #8b6b48;
   padding: 6px 12px; border-radius: 16px; cursor: pointer; font-size: 13px;
@@ -2528,8 +2523,7 @@ const styles = `
 /* ─── Pronunciation Practice ─── */
 .pron-practice-row {
   display: flex;
-  margin-top: 16px;
-  margin-bottom: 4px;
+  margin-top: 12px;
 }
 .pron-practice-btn {
   width: 100%;
@@ -2697,65 +2691,31 @@ const styles = `
 .pron-result {
   background: white;
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid #e8d4ad;
 }
 .dark .pron-result { background: #3c2818; border-color: #5a4530; }
-
-/* Comparison view: target vs heard side by side */
-.pron-compare {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.pron-compare-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: rgba(201, 164, 90, 0.08);
-}
-.dark .pron-compare-row { background: rgba(201, 165, 116, 0.08); }
-.pron-compare-label {
+.pron-heard { margin-bottom: 10px; }
+.pron-heard-label {
   font-size: 11px;
-  font-weight: 700;
   color: #8b6b48;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.dark .pron-compare-label { color: #c9a574; }
-.pron-compare-text {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.3;
-  word-break: break-word;
-}
-.pron-compare-target {
+.dark .pron-heard-label { color: #c9a574; }
+.pron-heard-text {
+  font-size: 18px;
   color: #3c1e0a;
+  font-weight: 600;
 }
-.dark .pron-compare-target { color: #f5e6d3; }
-.pron-compare-heard {
-  color: #3c1e0a;
-}
-.dark .pron-compare-heard { color: #f5e6d3; }
-.pron-compare-heard-perfect {
-  color: #2e8c4a;
-}
-.pron-compare-heard-close {
-  color: #b8862a;
-}
-.pron-compare-heard-try {
-  color: #c0392b;
-}
-
+.dark .pron-heard-text { color: #f5e6d3; }
 .pron-grade {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px;
   border-radius: 8px;
+  margin-top: 10px;
 }
 .pron-grade-perfect { background: rgba(46, 184, 92, 0.15); }
 .pron-grade-close { background: rgba(201, 164, 90, 0.15); }
@@ -2764,7 +2724,6 @@ const styles = `
 .pron-grade-label { font-size: 16px; font-weight: 700; flex: 1; }
 .pron-grade-sim { font-size: 13px; color: #8b6b48; font-weight: 600; }
 .dark .pron-grade-sim { color: #c9a574; }
-
 
 .pron-stats {
   text-align: center;
